@@ -67,7 +67,7 @@ class TwoOrthog:
 
 ScoreType = t.Union[
     HighestSurround, Square, Stack, ThreeDiag, ThreeL, ThreeOrthog,
-    TwoDiag, TwoOrthog
+    TwoDiag, TwoOrthog,
 ]
 
 
@@ -79,7 +79,7 @@ class Card:
     victory_points: int
 
 
-cards = [
+ALL_CARDS = [
    Card(purple, purple, Square(red), 6),
    Card(green, green, Stack(3, yellow), 4),
    Card(red, yellow, Stack(4, purple), 5),
@@ -142,3 +142,55 @@ cards = [
    Card(purple, purple, TwoOrthog(Stack('1+', yellow), Stack('1+', red)), 3),
    Card(yellow, yellow, TwoOrthog(Stack('1+', purple), Stack('1+', green)), 3),
 ]
+
+
+# ------------------------- Other -------------------------
+Hand = t.List[Card]
+
+
+@dataclass
+class BoardStack:
+    height: int
+    color: t.Optional[Color]
+
+
+Board = t.List[t.List[BoardStack]]
+
+
+@dataclass
+class Player:
+    hand: Hand
+    board: Board
+
+
+History = t.List[Card]
+Center = t.List[t.Tuple[Card, int]]
+
+
+@dataclass
+class GameState:
+    players: t.List[Player]
+    history: History
+    center: Center
+    deck: t.List[Card]
+
+
+@dataclass
+class DrawCardAction:
+    center_index: int  # TODO: do we need this?
+    card: Card
+
+
+@dataclass
+class PlayCardAction:
+    hand_index: int  # TODO: do we need this?
+    card: Card
+
+    # placement1/placement2 are tuples of x,y,height where we place the tuples.
+    # The third index is only necessary if they have the same placement, in
+    # which case the third index indicates the height
+    placement1: t.Tuple[int, int, int]
+    placement2: t.Tuple[int, int, int]
+
+
+Action = t.Union[DrawCardAction, PlayCardAction]

@@ -3,7 +3,7 @@ import enum
 import typing as t
 
 
-# ------------------------- Color -------------------------
+#################################### Color ####################################
 
 
 class Color(enum.Enum):
@@ -18,7 +18,7 @@ red, yellow, purple, green, rainbow = (
     Color.red, Color.yellow, Color.purple, Color.green, Color.rainbow)
 
 
-# ------------------------- Score types -------------------------
+################################# Score types #################################
 
 
 @dataclass
@@ -66,8 +66,8 @@ class TwoOrthog:
 
 
 ScoreType = t.Union[
-    HighestSurround, Square, Stack, ThreeDiag, ThreeL, ThreeOrthog,
-    TwoDiag, TwoOrthog,
+    HighestSurround, Square, Stack, ThreeDiag,
+    ThreeL, ThreeOrthog, TwoDiag, TwoOrthog,
 ]
 
 
@@ -144,7 +144,7 @@ ALL_CARDS = [
 ]
 
 
-# ------------------------- Other -------------------------
+#################################### Other ####################################
 Hand = t.List[Card]
 
 
@@ -161,6 +161,7 @@ Board = t.List[t.List[BoardStack]]
 class Player:
     hand: Hand
     board: Board
+    score: int
 
 
 History = t.List[Card]
@@ -173,6 +174,7 @@ class GameState:
     history: History
     center: Center
     deck: t.List[Card]
+    color_piles: t.Dict[Color, int]
 
 
 @dataclass

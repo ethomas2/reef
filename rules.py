@@ -37,7 +37,7 @@ def init_game() -> types.GameState:
         ],
         deck=deck,
         color_piles={
-            c: (
+            color: (
                 20
                 if nplayers <= 2
                 else 30
@@ -46,7 +46,7 @@ def init_game() -> types.GameState:
                 if nplayers == 4
                 else assert_never(f"Invalid Number of Players {nplayers}")
             )
-            for c in [
+            for color in [
                 types.Color.red,
                 types.Color.yellow,
                 types.Color.purple,
@@ -55,9 +55,6 @@ def init_game() -> types.GameState:
         },
     )
 
-    if gamestate.color_piles is None:
-        raise Exception("invalid number of players")
-
     return gamestate
 
 
@@ -65,7 +62,7 @@ def get_actions_for_player(
     state: types.GameState, player_idx: int
 ) -> t.List[types.Action]:
     draw_actions = [
-        types.DrawCardAction(i, card)
+        types.DrawCenterCardAction(i, card)
         for i, (card, coins) in enumerate(state.center)
         if len(state.players[player_idx].hand) < 3
     ]
@@ -125,7 +122,7 @@ def takeaction(
 ) -> types.GameState:
     new_state = copy.deepcopy(old_state)
     player = new_state.players[player_idx]
-    if isinstance(action, types.DrawCardAction):
+    if isinstance(action, types.DrawCenterCardAction):
         (drawn_card, score) = new_state.center.pop(action.center_index)
         player.hand.append(drawn_card)
         player.score += score

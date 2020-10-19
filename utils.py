@@ -99,7 +99,7 @@ def format_card(card: types.Card):
             {s}{s}{s}
             """
         ).strip()
-        title = "Highest Surround"
+        title = "HighestSurround"
     elif isinstance(card.score_type, types.Square):
         c = COLOR_TO_LETTER[card.score_type.color]
         icon = textwrap.dedent(
@@ -170,7 +170,18 @@ def format_card(card: types.Card):
 
 
 def format_hand(hand: types.Hand) -> str:
-    return hconcat(*map(format_card, hand))
+    formatted_cards = list(map(format_card, hand))
+    max_card_height = max([len(card.split("\n")) for card in formatted_cards])
+    spacer = " \n" * max_card_height
+
+    def arr_join(arr, sep):
+        it = iter(arr)
+        yield next(it)
+        for x in it:
+            yield sep
+            yield x
+
+    return hconcat(*arr_join(formatted_cards, spacer))
 
 
 def format_gamestate(gamestate: types.GameState) -> str:

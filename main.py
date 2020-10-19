@@ -2,13 +2,14 @@ import itertools
 
 import utils
 from rules import init_game
-import _types as types
+from engine import get_action
 
 
-def play_human_vs_random_computer():
+def play_human_vs_human():
     nplayers = 2
     gamestate = init_game(nplayers)
     for player in itertools.repeat(*range(nplayers)):
+        print(utils.format_gamestate(gamestate))
         while True:
             action = get_action(player, gamestate)
             newgamestate = take_action(gamestate, action)
@@ -22,17 +23,4 @@ def play_human_vs_random_computer():
 
 
 if __name__ == "__main__":
-    # play_human_vs_random_computer()
-
-    def random_boardstack():
-        import random
-
-        i = random.randint(0, 4)
-        if i == 0:
-            return types.BoardStack(height=i, color=None)
-        return types.BoardStack(
-            height=i, color=random.choice(list(types.Color))
-        )
-
-    board = [[random_boardstack() for _x in range(4)] for _y in range(4)]
-    utils.pprint_board(board)
+    play_human_vs_human()

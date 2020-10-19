@@ -7,8 +7,7 @@ import _types as types
 from utils import assert_never
 
 
-def init_game() -> types.GameState:
-    nplayers = 2
+def init_game(nplayers: int) -> types.GameState:
     deck = types.ALL_CARDS[:]
     random.shuffle(deck)
     empty_stack = types.BoardStack(height=0, color=None)
@@ -19,7 +18,7 @@ def init_game() -> types.GameState:
         [empty_stack, empty_stack, empty_stack, empty_stack],
     ]
     players = [
-        types.Player(
+        types.PlayerState(
             hand=[deck.pop(), deck.pop()],
             board=copy.deepcopy(empty_board),
             score=0,

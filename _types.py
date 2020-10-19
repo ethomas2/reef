@@ -86,7 +86,7 @@ ScoreType = t.Union[
 class Card:
     color1: Color
     color2: Color
-    scrore_type: ScoreType
+    score_type: ScoreType
     victory_points: int
 
 
@@ -171,7 +171,7 @@ Board = t.List[t.List[BoardStack]]
 
 
 @dataclass
-class Player:
+class PlayerState:
     hand: Hand
     board: Board
     score: int
@@ -183,7 +183,7 @@ Center = t.List[t.Tuple[Card, int]]
 
 @dataclass
 class GameState:
-    players: t.List[Player]
+    players: t.List[PlayerState]
     history: History
     center: Center
     deck: t.List[Card]
@@ -192,8 +192,7 @@ class GameState:
 
 @dataclass
 class DrawCenterCardAction:
-    center_index: int  # TODO: do we need this?
-    card: Card
+    center_index: int
 
 
 @dataclass
@@ -203,14 +202,13 @@ class DrawDeckAction:
 
 @dataclass
 class PlayCardAction:
-    hand_index: int  # TODO: do we need this?
-    card: Card
+    hand_index: int
 
-    # placement1/placement2 are tuples of x,y,height where we place the tuples.
-    # The third index is only necessary if they have the same placement, in
-    # which case the third index indicates the height
-    placement1: t.Tuple[int, int, int]
-    placement2: t.Tuple[int, int, int]
+    # placement1/placement2 are tuples of x,y where we place the pieces. If
+    # they are placed on the same place placement1 is assumed to happen first.
+    # So placement1 ends up below placement2
+    placement1: t.Tuple[int, int]
+    placement2: t.Tuple[int, int]
 
 
 Action = t.Union[DrawCenterCardAction, DrawDeckAction, PlayCardAction]

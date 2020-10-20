@@ -1,3 +1,4 @@
+import re
 import textwrap
 import itertools
 import io
@@ -52,7 +53,7 @@ def hconcat(*schunks: str) -> str:
             file=buffer,
         )
 
-    return buffer.getvalue()
+    return buffer.getvalue().strip()
 
 
 def hconcat_with_delim(*items: str, delim=" "):
@@ -184,13 +185,12 @@ def format_card(card: types.Card):
 
 
 def format_hand(hand: types.Hand) -> str:
-    return hconcat_with_delim(*map(format_card, hand))
+    return hconcat_with_delim(*map(format_card, hand), delim="  ")
 
 
 def format_center(center: types.Center):
     cards = [format_card(card) + "\n" + str(score) for card, score in center]
-    return hconcat_with_delim(*cards)
-    # scores = [score for _, score in center]
+    return hconcat_with_delim(*cards, delim="  ")
 
 
 def format_gamestate(gamestate: types.GameState) -> str:

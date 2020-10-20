@@ -10,7 +10,7 @@ import utils
 
 
 def get_action(player_idx: int, gamestate: types.GameState) -> types.Action:
-    # is_int = lambda n: int(n)
+    print(f"Player {player_idx}")
     action = int(
         utils.get_and_validate_input(
             textwrap.dedent(

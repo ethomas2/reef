@@ -175,3 +175,7 @@ def score_action(
     action: types.PlayCardAction,
 ) -> int:
     return 1
+
+
+def is_over(gamestate: types.GameState) -> bool:
+    return False

@@ -55,6 +55,20 @@ def hconcat(*schunks: str) -> str:
     return buffer.getvalue()
 
 
+def hconcat_with_delim(*items: str, delim=" "):
+    max_item_height = max([len(item.split("\n")) for item in items])
+    spacer = f"{delim}\n" * max_item_height
+
+    def arr_join(arr, sep):
+        it = iter(arr)
+        yield next(it)
+        for x in it:
+            yield sep
+            yield x
+
+    return hconcat(*arr_join(items, spacer))
+
+
 COLOR_TO_LETTER = {
     types.Color.red: "R",
     types.Color.yellow: "Y",
@@ -170,18 +184,13 @@ def format_card(card: types.Card):
 
 
 def format_hand(hand: types.Hand) -> str:
-    formatted_cards = list(map(format_card, hand))
-    max_card_height = max([len(card.split("\n")) for card in formatted_cards])
-    spacer = " \n" * max_card_height
+    return hconcat_with_delim(*map(format_card, hand))
 
-    def arr_join(arr, sep):
-        it = iter(arr)
-        yield next(it)
-        for x in it:
-            yield sep
-            yield x
 
-    return hconcat(*arr_join(formatted_cards, spacer))
+def format_center(center: types.Center):
+    cards = [format_card(card) + "\n" + str(score) for card, score in center]
+    return hconcat_with_delim(*cards)
+    # scores = [score for _, score in center]
 
 
 def format_gamestate(gamestate: types.GameState) -> str:
@@ -198,11 +207,16 @@ def format_gamestate(gamestate: types.GameState) -> str:
         gamestate.players[1].board,
     )
 
+    center = format_center(gamestate.center)
     return "\n".join(
         [
             format_hand(hand1),
             format_board(board1),
-            "-----------------------------------------------------------",
+            hconcat(
+                "-" * ((80 - len(center)) // 2),
+                center,
+                "-" * ((80 - len(center)) // 2),
+            ),
             format_board(board2),
             format_hand(hand2),
         ]

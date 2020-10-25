@@ -27,6 +27,7 @@ def init_game(nplayers: int) -> types.GameState:
     ]
     gamestate = types.GameState(
         players=players,
+        turn=0,
         history=[],
         center=[
             (deck.pop(), 0),
@@ -133,11 +134,12 @@ def _is_gamestate_valid(state: types.GameState) -> bool:
 
 
 def take_action(
-    old_state: types.GameState, action: types.Action, player_idx: int
+    old_state: types.GameState,
+    action: types.Action,
 ) -> t.Optional[types.GameState]:
     """ Returns new gamestate, or None if action was invalid """
     new_state = copy.deepcopy(old_state)
-    player = new_state.players[player_idx]
+    player = new_state.players[new_state.turn]
     if isinstance(action, types.DrawCenterCardAction):
         if len(new_state.center) == 0:
             return None
@@ -164,6 +166,8 @@ def take_action(
         card = new_state.deck.pop()
         player.hand.append(card)
 
+    new_state.turn = (new_state.turn + 1) % len(new_state.players)
+
     if not _is_gamestate_valid(new_state):
         return None
     return new_state
@@ -178,4 +182,7 @@ def score_action(
 
 
 def is_over(gamestate: types.GameState) -> bool:
-    return False
+    return len(gamestate.deck) == 0 or (
+        any(pile == 0 for pile in gamestate.color_piles.values())
+        and gamestate.turn == 0
+    )

@@ -140,6 +140,10 @@ def take_action(
         (drawn_card, score) = new_state.center.pop(action.center_index)
         player.hand.append(drawn_card)
         player.score += score
+
+        if len(new_state.deck) > 0:
+            new_state.center.append((new_state.deck.pop(), 0))
+
     elif isinstance(action, types.PlayCardAction):
         card = player.hand.pop(action.hand_index)
         x1, y1 = action.placement1

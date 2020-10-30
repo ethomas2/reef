@@ -161,8 +161,23 @@ def take_action(
 
         player.score += score_action(old_state, new_state, action)
     elif isinstance(action, types.DrawDeckAction):
+        if player.score == 0:
+            return None
         card = new_state.deck.pop()
         player.hand.append(card)
+
+        # put a coin on an arbitrary center card that has the lowest number of
+        # coins on it . TODO: fix it so the player has a choice of what card to
+        # put it on
+        player.score -= 1
+        idx, card, score = min(
+            (
+                (idx, card, score)
+                for (idx, (card, score)) in enumerate(new_state.center)
+            ),
+            key=lambda x: x[2],
+        )
+        new_state.center[idx] = (card, score + 1)
 
     new_state.turn = (new_state.turn + 1) % len(new_state.players)
 

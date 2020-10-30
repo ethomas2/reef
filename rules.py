@@ -58,49 +58,40 @@ def init_game(nplayers: int) -> types.GameState:
     return gamestate
 
 
-# def get_actions_for_player(
-#     state: types.GameState, player_idx: int
-# ) -> t.List[types.Action]:
-#     draw_actions: t.List[types.Action] = [
-#         types.DrawCenterCardAction(i)
-#         for i in range(len(state.center))
-#         if len(state.players[player_idx].hand) < 3
-#     ]
-#     draw_actions.append(types.DrawDeckAction())
+def get_all_actions(
+    state: types.GameState,
+) -> t.List[types.Action]:
+    """ Return all *valid* actions from this gamestate. """
+    player_idx = state.turn
+    player = state.players[player_idx]
 
-#     player = state.players[player_idx]
-#     play_actions = [
-#         types.PlayCardAction(
-#             hand_index=hand_index,
-#             placement1=(x1, y1),
-#             placement2=(x2, y2),
-#         )
-#         for hand_index in range(len(player.hand))
-#         for (x1, y1) in itertools.product(range(4), repeat=2)
-#         for (x2, y2) in itertools.product(range(4), repeat=2)
-#     ]
-#     play_actions.extend(
-#         [
-#             types.PlayCardAction(
-#                 hand_index=hand_index,
-#                 placement1=(x, y),
-#                 placement2=(x, y),
-#             )
-#             for hand_index in range(len(player.hand))
-#             for (x, y) in itertools.product(range(4), repeat=2)
-#             for p1, p2 in [[1, 2], [2, 1]]
-#         ]
-#     )
-#     play_actions = [
-#         pa
-#         for pa in play_actions
-#         if pa.placement1[2] <= 4 and pa.placement2[2] <= 4
-#     ]
+    draw_center_actions: t.List[types.Action] = [
+        types.DrawCenterCardAction(i)
+        for i in range(len(state.center))
+        if len(state.players[player_idx].hand) < 3
+    ]
 
-#     actions = t.cast(t.List[types.Action], draw_actions) + t.cast(
-#         t.List[types.Action], play_actions
-#     )
-#     return actions
+    draw_deck_action: types.Action = types.DrawDeckAction()
+
+    play_card_actions: t.List[types.Action] = [
+        types.PlayCardAction(
+            hand_index=hand_index,
+            placement1=(x1, y1),
+            placement2=(x2, y2),
+        )
+        for hand_index in range(len(player.hand))
+        for (x1, y1) in itertools.product(range(4), repeat=2)
+        for (x2, y2) in itertools.product(range(4), repeat=2)
+    ]
+
+    actions = draw_center_actions + [draw_deck_action] + play_card_actions
+    new_game_states = [take_action(state, action) for action in actions]
+    valid_actions = [
+        action
+        for (action, newgamestate) in zip(actions, new_game_states)
+        if newgamestate is not None
+    ]
+    return valid_actions
 
 
 def _is_gamestate_valid(state: types.GameState) -> bool:
@@ -133,6 +124,9 @@ def _is_gamestate_valid(state: types.GameState) -> bool:
     )
 
 
+# TODO: consider making an lru cache out of this so that when you call
+# get_all_actions, which calls this to see if valid, when you later call
+# take_action the result is already cached
 def take_action(
     old_state: types.GameState,
     action: types.Action,

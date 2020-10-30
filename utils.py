@@ -57,6 +57,7 @@ def hconcat(*schunks: str) -> str:
 
 
 def hconcat_with_delim(*items: str, delim=" "):
+    assert len(items) > 0
     max_item_height = max([len(item.split("\n")) for item in items])
     spacer = f"{delim}\n" * max_item_height
 
@@ -185,10 +186,14 @@ def format_card(card: types.Card):
 
 
 def format_hand(hand: types.Hand) -> str:
+    if len(hand) == 0:
+        return ""
     return hconcat_with_delim(*map(format_card, hand), delim="  ")
 
 
 def format_center(center: types.Center):
+    if len(center) == 0:
+        return ""
     cards = [format_card(card) + "\n" + str(score) for card, score in center]
     return hconcat_with_delim(*cards, delim="  ")
 

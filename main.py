@@ -1,7 +1,7 @@
 import random
 import subprocess
 
-import utils
+import fmt
 from rules import init_game, take_action, is_over, get_all_actions
 from engine import get_action
 
@@ -11,7 +11,7 @@ def play_human_vs_human():
     gamestate = init_game(nplayers)
     while True:
         subprocess.call("clear")
-        print(utils.format_gamestate(gamestate))
+        print(fmt.format_gamestate(gamestate))
         if is_over(gamestate):
             print("Game Over")
             break
@@ -33,7 +33,7 @@ def play_random_computer_vs_random_computer():
     gamestate = init_game(nplayers)
     while True:
         subprocess.call("clear")
-        print(utils.format_gamestate(gamestate))
+        print(fmt.format_gamestate(gamestate))
         if is_over(gamestate):
             print("Game Over")
             break

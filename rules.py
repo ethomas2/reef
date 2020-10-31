@@ -5,6 +5,7 @@ import typing as t
 
 import _types as types
 from utils import assert_never
+from score import score_play_action
 
 
 def init_game(nplayers: int) -> types.GameState:
@@ -159,7 +160,7 @@ def take_action(
         new_state.color_piles[card.color1] -= 1
         new_state.color_piles[card.color2] -= 1
 
-        player.score += score_action(old_state, new_state, action)
+        player.score += score_play_action(old_state, new_state, action)
     elif isinstance(action, types.DrawDeckAction):
         if player.score == 0:
             return None
@@ -184,14 +185,6 @@ def take_action(
     if not _is_gamestate_valid(new_state):
         return None
     return new_state
-
-
-def score_action(
-    old_state: types.GameState,
-    new_state: types.GameState,
-    action: types.PlayCardAction,
-) -> int:
-    return 1
 
 
 def is_over(gamestate: types.GameState) -> bool:

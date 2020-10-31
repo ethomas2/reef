@@ -39,10 +39,14 @@ def play_random_computer_vs_random_computer():
             break
 
         actions = get_all_actions(gamestate)
-        assert len(actions) > 0
+        assert (
+            len(actions) > 0
+        ), "player has no actions even though game is not over"
         action = random.choice(actions)
         newgamestate = take_action(gamestate, action)
-        assert newgamestate is not None
+        assert (
+            newgamestate is not None
+        ), "get_all_actions() returned invalid action"
         gamestate = newgamestate
 
 

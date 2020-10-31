@@ -163,6 +163,7 @@ Hand = t.List[Card]
 
 @dataclass
 class BoardStack:
+    # TODO: Change to BoardStack = t.Optional[t.Tuple[int, Color]]
     height: int
     color: t.Optional[Color]
 

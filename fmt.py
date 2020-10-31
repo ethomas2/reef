@@ -186,6 +186,7 @@ def format_gamestate(gamestate: types.GameState) -> str:
     center = format_center(gamestate.center)
     leftcol = "\n".join(
         [
+            f"Score player 0 : {gamestate.players[0].score}",
             format_hand(hand1),
             format_board(board1),
             hconcat(
@@ -193,6 +194,8 @@ def format_gamestate(gamestate: types.GameState) -> str:
                 center,
                 "-" * ((80 - len(center)) // 2),
             ),
+            "",
+            f"Score player 1: {gamestate.players[1].score}",
             format_board(board2),
             format_hand(hand2),
         ]

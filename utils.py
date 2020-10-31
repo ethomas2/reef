@@ -1,4 +1,4 @@
-import re
+import json
 import textwrap
 import itertools
 import io
@@ -213,7 +213,7 @@ def format_gamestate(gamestate: types.GameState) -> str:
     )
 
     center = format_center(gamestate.center)
-    return "\n".join(
+    leftcol = "\n".join(
         [
             format_hand(hand1),
             format_board(board1),
@@ -226,3 +226,6 @@ def format_gamestate(gamestate: types.GameState) -> str:
             format_hand(hand2),
         ]
     )
+
+    rightcol = json.dumps(gamestate.color_piles, indent=2)
+    return hconcat(leftcol, rightcol)

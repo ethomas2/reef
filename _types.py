@@ -6,7 +6,7 @@ import typing as t
 #################################### Color ####################################
 
 
-class Color(enum.Enum):
+class Color(str, enum.Enum):
     red = "red"
     yellow = "yellow"
     purple = "purple"

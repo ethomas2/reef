@@ -6,6 +6,7 @@ from hypothesis import given, strategies as st, note
 import fmt
 import _types as types
 from score import maximal_covering
+from main import play_random_computer_vs_random_computer
 
 
 def test_pprint_board():
@@ -115,3 +116,8 @@ def test_adding_node_to_maximal_covering_does_not_decrease_covering_size(
     note(f"{edges + new_edges}")
     note(f"{covering2=}")
     assert len(covering1) <= len(covering2)
+
+
+@given(st.none())
+def test_play_random_computer_vs_random_computer(_):
+    play_random_computer_vs_random_computer()

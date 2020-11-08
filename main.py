@@ -1,9 +1,12 @@
+import sys
 import random
 import subprocess
 
-import fmt
-from rules import init_game, take_action, is_over, get_all_actions
+import typing as t
+
 from engine import get_action
+from rules import init_game, take_action, is_over, get_all_actions
+import fmt
 
 
 def play_human_vs_human():
@@ -27,16 +30,24 @@ def play_human_vs_human():
         gamestate = newgamestate
 
 
-def play_random_computer_vs_random_computer():
-    random.seed(0)
+def play_random_computer_vs_random_computer(
+    seed: t.Optional[int] = None,
+    output: t.Optional[t.IO] = None,
+    clear_terminal: bool = False,
+):
+    if seed:
+        random.seed(seed)
     nplayers = 2
     gamestate = init_game(nplayers)
     while True:
-        subprocess.call("clear")
-        print(fmt.format_gamestate(gamestate))
-        if is_over(gamestate):
-            print("Game Over")
-            break
+        if output:
+            if clear_terminal:
+                subprocess.call("clear")
+            print(fmt.format_gamestate(gamestate), file=output)
+            if is_over(gamestate):
+                print("Game Over", file=output)
+                break
+            print("\n", file=output)
 
         actions = get_all_actions(gamestate)
         assert (
@@ -51,4 +62,6 @@ def play_random_computer_vs_random_computer():
 
 
 if __name__ == "__main__":
-    play_random_computer_vs_random_computer()
+    play_random_computer_vs_random_computer(
+        seed=0, output=sys.stdout, clear_terminal=True
+    )

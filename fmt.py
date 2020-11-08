@@ -74,10 +74,10 @@ def format_board(board: types.Board) -> str:
 
 def format_card(card: types.Card):
     icon, title = "UNSET", "UNSET"
-    if isinstance(card.score_type, types.HighestSurround):
+    if isinstance(card.card_face, types.HighestSurround):
         c, s = (
-            COLOR_TO_LETTER[card.score_type.center].upper(),
-            COLOR_TO_LETTER[card.score_type.surrounder].lower(),
+            COLOR_TO_LETTER[card.card_face.center].upper(),
+            COLOR_TO_LETTER[card.card_face.surrounder].lower(),
         )
         icon = textwrap.dedent(
             f"""
@@ -87,8 +87,8 @@ def format_card(card: types.Card):
             """
         ).strip()
         title = "HighestSurround"
-    elif isinstance(card.score_type, types.Square):
-        c = COLOR_TO_LETTER[card.score_type.color]
+    elif isinstance(card.card_face, types.Square):
+        c = COLOR_TO_LETTER[card.card_face.color]
         icon = textwrap.dedent(
             f"""
             {c}{c}
@@ -96,17 +96,17 @@ def format_card(card: types.Card):
             """
         ).strip()
         title = "Square"
-    elif isinstance(card.score_type, types.Stack):
-        c = COLOR_TO_LETTER[card.score_type.color]
-        h = card.score_type.height
+    elif isinstance(card.card_face, types.Stack):
+        c = COLOR_TO_LETTER[card.card_face.color]
+        h = card.card_face.height
         icon = textwrap.dedent(
             f"""
             {c}{h}
             """
         ).strip()
         title = "Stack"
-    elif isinstance(card.score_type, types.ThreeDiag):
-        c = COLOR_TO_LETTER[card.score_type.color]
+    elif isinstance(card.card_face, types.ThreeDiag):
+        c = COLOR_TO_LETTER[card.card_face.color]
         icon = textwrap.dedent(
             f"""
             {c}
@@ -115,8 +115,8 @@ def format_card(card: types.Card):
             """
         ).strip()
         title = "ThreeDiag"
-    elif isinstance(card.score_type, types.ThreeL):
-        c = COLOR_TO_LETTER[card.score_type.color]
+    elif isinstance(card.card_face, types.ThreeL):
+        c = COLOR_TO_LETTER[card.card_face.color]
         icon = textwrap.dedent(
             f"""
             {c}
@@ -124,15 +124,15 @@ def format_card(card: types.Card):
             """
         ).strip()
         title = "ThreeL"
-    elif isinstance(card.score_type, types.ThreeOrthog):
-        c = COLOR_TO_LETTER[card.score_type.color]
+    elif isinstance(card.card_face, types.ThreeOrthog):
+        c = COLOR_TO_LETTER[card.card_face.color]
         icon = f"{c}{c}{c}"
         title = "ThreeOrthog"
-    elif isinstance(card.score_type, types.TwoDiag):
-        c1 = COLOR_TO_LETTER[card.score_type.stack1.color]
-        c2 = COLOR_TO_LETTER[card.score_type.stack2.color]
-        h1 = card.score_type.stack1.height
-        h2 = card.score_type.stack2.height
+    elif isinstance(card.card_face, types.TwoDiag):
+        c1 = COLOR_TO_LETTER[card.card_face.stack1.color]
+        c2 = COLOR_TO_LETTER[card.card_face.stack2.color]
+        h1 = card.card_face.stack1.height
+        h2 = card.card_face.stack2.height
 
         icon = textwrap.dedent(
             f"""
@@ -141,15 +141,15 @@ def format_card(card: types.Card):
             """
         ).strip()
         title = "TwoDiag"
-    elif isinstance(card.score_type, types.TwoOrthog):
-        c1 = COLOR_TO_LETTER[card.score_type.stack1.color]
-        c2 = COLOR_TO_LETTER[card.score_type.stack2.color]
-        h1 = card.score_type.stack1.height
-        h2 = card.score_type.stack2.height
+    elif isinstance(card.card_face, types.TwoOrthog):
+        c1 = COLOR_TO_LETTER[card.card_face.stack1.color]
+        c2 = COLOR_TO_LETTER[card.card_face.stack2.color]
+        h1 = card.card_face.stack1.height
+        h2 = card.card_face.stack2.height
         icon = f"{c1}{h1} {c2}{h2}"
         title = "TwoOrthog"
     else:
-        utils.assert_never(f"Invalid icon type {type(card.score_type)}")
+        utils.assert_never(f"Invalid icon type {type(card.card_face)}")
 
     c1, c2 = COLOR_TO_LETTER[card.color1], COLOR_TO_LETTER[card.color2]
     card_text = "\n".join([title, icon, f"{c1} {c2}"])

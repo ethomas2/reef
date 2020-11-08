@@ -12,40 +12,38 @@ def score_play_action(
 ) -> int:
     player = old_state.players[old_state.turn]
     card_played = player.hand[action.hand_index]
-    if isinstance(card_played.score_type, types.HighestSurround):
+    if isinstance(card_played.card_face, types.HighestSurround):
         return score_highest_surround(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.Square):
+    elif isinstance(card_played.card_face, types.Square):
         return score_square(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.Stack):
-        return score_stack(
-            old_state, new_state, action, card_played.score_type
-        )
-    elif isinstance(card_played.score_type, types.ThreeDiag):
+    elif isinstance(card_played.card_face, types.Stack):
+        return score_stack(old_state, new_state, action, card_played.card_face)
+    elif isinstance(card_played.card_face, types.ThreeDiag):
         return score_three_diag(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.ThreeL):
+    elif isinstance(card_played.card_face, types.ThreeL):
         return score_three_L(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.ThreeOrthog):
+    elif isinstance(card_played.card_face, types.ThreeOrthog):
         return score_three_orthog(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.TwoDiag):
+    elif isinstance(card_played.card_face, types.TwoDiag):
         return score_two_diag(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
-    elif isinstance(card_played.score_type, types.TwoOrthog):
+    elif isinstance(card_played.card_face, types.TwoOrthog):
         return score_two_orthog(
-            old_state, new_state, action, card_played.score_type
+            old_state, new_state, action, card_played.card_face
         )
     else:
-        utils.assert_never(f"unknown card type {type(card_played.score_type)}")
+        utils.assert_never(f"unknown card face {type(card_played.card_face)}")
 
 
 T = t.TypeVar("T")
@@ -65,12 +63,12 @@ def score_highest_surround(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.HighestSurround,
+    card_face: types.HighestSurround,
 ) -> int:
     player = new_state.players[old_state.turn]
     board = player.board
 
-    center_color = score_card.center
+    center_color = card_face.center
 
     highest_height_of_center_color = max(
         (
@@ -100,7 +98,7 @@ def score_highest_surround(
                 # shouldn't be necessary bc center is always differnt color
                 # than surrounder
                 and (i, j) != (0, 0)
-                and board[x + i][y + j] == score_card.surrounder
+                and board[x + i][y + j] == card_face.surrounder
             )
 
     return max(possible_scores())
@@ -110,7 +108,7 @@ def score_square(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.Square,
+    card_face: types.Square,
 ) -> int:
     """
     Form a graph where each node represents a square (represented by it's top
@@ -136,7 +134,7 @@ def score_stack(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.Stack,
+    card_face: types.Stack,
 ) -> int:
     board = new_state.players[old_state.turn].board
 
@@ -144,8 +142,8 @@ def score_stack(
         1
         for row in board
         for stack in row
-        if stack.color == score_card.color
-        and height_match(stack.height, score_card.height)
+        if stack.color == card_face.color
+        and height_match(stack.height, card_face.height)
     )
 
 
@@ -153,7 +151,7 @@ def score_three_diag(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.ThreeDiag,
+    card_face: types.ThreeDiag,
 ) -> int:
     card = old_state.players[old_state.turn].hand[action.hand_index]
     top_left_coords = itertools.product(range(2), range(4))
@@ -176,14 +174,14 @@ def score_three_L(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.ThreeL,
+    card_face: types.ThreeL,
 ) -> int:
     card = old_state.players[old_state.turn].hand[action.hand_index]
     new_board = new_state.players[old_state.turn].board
 
     blocks = []
     for (x, y) in ALL_COORDS:
-        if new_board[x][y] == score_card.color:
+        if new_board[x][y] == card_face.color:
             possible_blocks = [
                 [(x, y), (x + 1, y), (x, y + 1)],
                 [(x, y), (x + 1, y), (x, y - 1)],
@@ -202,7 +200,7 @@ def score_three_L(
                 possible_block
                 for possible_block in possible_blocks
                 if all(
-                    new_board[x][y] == score_card.color
+                    new_board[x][y] == card_face.color
                     for (x, y) in possible_block
                 )
             ]
@@ -221,14 +219,14 @@ def score_three_orthog(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.ThreeOrthog,
+    card_face: types.ThreeOrthog,
 ) -> int:
     card = old_state.players[old_state.turn].hand[action.hand_index]
     new_board = new_state.players[old_state.turn].board
 
     blocks = []
     for (x, y) in ALL_COORDS:
-        if new_board[x][y] == score_card.color:
+        if new_board[x][y] == card_face.color:
             possible_blocks = [
                 [(x, y), (x + 1, y), (x + 2, y)],
                 [(x, y), (x, y + 1), (x, y + 2)],
@@ -245,7 +243,7 @@ def score_three_orthog(
                 possible_block
                 for possible_block in possible_blocks
                 if all(
-                    new_board[x][y] == score_card.color
+                    new_board[x][y] == card_face.color
                     for (x, y) in possible_block
                 )
             ]
@@ -264,7 +262,7 @@ def score_two_diag(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.TwoDiag,
+    card_face: types.TwoDiag,
 ) -> int:
     card = old_state.players[old_state.turn].hand[action.hand_index]
     new_board = new_state.players[old_state.turn].board
@@ -273,8 +271,8 @@ def score_two_diag(
     for (x, y) in ALL_COORDS:
         if (
             new_board[x][y]
-            and new_board[x][y].color == score_card.stack1.color
-            and height_match(new_board[x][y].height, score_card.stack1.height)
+            and new_board[x][y].color == card_face.stack1.color
+            and height_match(new_board[x][y].height, card_face.stack1.height)
         ):
             possible_blocks = [
                 [(x, y), (x + 1, y + 1)],
@@ -294,9 +292,9 @@ def score_two_diag(
                 [s1, (x2, y2)]  # square1 and square2
                 for [s1, (x2, y2)] in possible_blocks
                 if new_board[x2][y2]  # useful for if change to be optional
-                and new_board[x2][y2].color == score_card.stack2.color
+                and new_board[x2][y2].color == card_face.stack2.color
                 and height_match(
-                    new_board[x2][y2].height, score_card.stack2.height
+                    new_board[x2][y2].height, card_face.stack2.height
                 )
             ]
             blocks.extend(possible_blocks)
@@ -313,7 +311,7 @@ def score_two_orthog(
     old_state: types.GameState,
     new_state: types.GameState,
     action: types.PlayCardAction,
-    score_card: types.TwoOrthog,
+    card_face: types.TwoOrthog,
 ) -> int:
     card = old_state.players[old_state.turn].hand[action.hand_index]
     new_board = new_state.players[old_state.turn].board
@@ -322,8 +320,8 @@ def score_two_orthog(
     for (x, y) in ALL_COORDS:
         if (
             new_board[x][y]
-            and new_board[x][y].color == score_card.stack1.color
-            and height_match(new_board[x][y].height, score_card.stack1.height)
+            and new_board[x][y].color == card_face.stack1.color
+            and height_match(new_board[x][y].height, card_face.stack1.height)
         ):
             possible_blocks = [
                 [(x, y), (x + 1, y)],
@@ -343,9 +341,9 @@ def score_two_orthog(
                 [s1, (x2, y2)]  # square1 and square2
                 for [s1, (x2, y2)] in possible_blocks
                 if new_board[x2][y2]
-                and new_board[x2][y2].color == score_card.stack2.color
+                and new_board[x2][y2].color == card_face.stack2.color
                 and height_match(
-                    new_board[x2][y2].height, score_card.stack2.height
+                    new_board[x2][y2].height, card_face.stack2.height
                 )
             ]
             blocks.extend(possible_blocks)

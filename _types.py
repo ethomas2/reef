@@ -70,7 +70,7 @@ class TwoOrthog:
     stack2: Stack
 
 
-ScoreType = t.Union[
+CardFace = t.Union[
     HighestSurround,
     Square,
     Stack,
@@ -86,7 +86,7 @@ ScoreType = t.Union[
 class Card:
     color1: Color
     color2: Color
-    score_type: ScoreType
+    card_face: CardFace
     victory_points: int
 
 

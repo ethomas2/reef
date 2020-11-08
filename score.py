@@ -280,14 +280,13 @@ def score_two_diag(
                 [(x, y), (x - 1, y + 1)],
                 [(x, y), (x - 1, y - 1)],
             ]
+
             possible_blocks = [
-                [
-                    (x, y)
-                    for (x, y) in possible_block
-                    if 0 <= x < 4 and 0 <= y < 4
-                ]
-                for possible_block in possible_blocks
+                [(x1, y1), (x2, y2)]
+                for [(x1, y1), (x2, y2)] in possible_blocks
+                if 0 <= x1 < 4 and 0 <= y1 < 4 and 0 <= x2 < 4 and 0 <= y2 < 4
             ]
+
             possible_blocks = [
                 [s1, (x2, y2)]  # square1 and square2
                 for [s1, (x2, y2)] in possible_blocks
@@ -330,13 +329,11 @@ def score_two_orthog(
                 [(x, y), (x, y - 1)],
             ]
             possible_blocks = [
-                [
-                    (x, y)
-                    for (x, y) in possible_block
-                    if 0 <= x < 4 and 0 <= y < 4
-                ]
-                for possible_block in possible_blocks
+                [(x1, y1), (x2, y2)]
+                for [(x1, y1), (x2, y2)] in possible_blocks
+                if 0 <= x1 < 4 and 0 <= y1 < 4 and 0 <= x2 < 4 and 0 <= y2 < 4
             ]
+
             possible_blocks = [
                 [s1, (x2, y2)]  # square1 and square2
                 for [s1, (x2, y2)] in possible_blocks
@@ -346,6 +343,7 @@ def score_two_orthog(
                     new_board[x2][y2].height, card_face.stack2.height
                 )
             ]
+
             blocks.extend(possible_blocks)
 
     exclusion_edges = [

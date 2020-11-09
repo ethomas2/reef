@@ -63,6 +63,13 @@ def play_random_computer_vs_random_computer(
 
 
 if __name__ == "__main__":
-    play_random_computer_vs_random_computer(
-        seed=0, output=sys.stdout, clear_terminal=True
-    )
+    if False:
+        play_random_computer_vs_random_computer(
+            seed=0, output=sys.stdout, clear_terminal=True
+        )
+
+    if False:
+        with open("scrap/gamelog.log", "w+") as f:
+            play_random_computer_vs_random_computer(seed=0, output=f)
+
+    play_random_computer_vs_random_computer(seed=0)

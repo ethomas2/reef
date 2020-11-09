@@ -6,7 +6,10 @@ from hypothesis import given, strategies as st, note
 import fmt
 import _types as types
 from score import maximal_covering
+from rules import is_valid_action, take_action
 from main import play_random_computer_vs_random_computer
+
+import strategies as mst  # mystrat
 
 
 def test_pprint_board():
@@ -49,23 +52,7 @@ def test_maximal_covering_examples():
     assert len(maximal_covering(nodes, edges)) == 5
 
 
-@st.composite
-def graphs(draw):
-    r = draw(st.randoms(use_true_random=False))
-    n_nodes = draw(st.integers(min_value=2, max_value=30))
-    nodes = list(range(n_nodes))
-    # for a graph with n nodes the maximum number of edges is n*(n-1)/2 if
-    # every possible edge is chosen
-    n_edges = draw(
-        st.integers(min_value=0, max_value=int(n_nodes * (n_nodes - 1) / 2))
-    )
-    all_possible_edges = list(itertools.combinations(nodes, 2))
-    edges = r.choices(all_possible_edges, k=n_edges)
-
-    return nodes, edges
-
-
-@given(graphs())
+@given(mst.graphs())
 def test_maximal_covering_does_not_include_adjacent_nodes(graph):
     nodes, edges = graph
     note(f"{nodes=}")
@@ -81,7 +68,7 @@ def test_maximal_covering_does_not_include_adjacent_nodes(graph):
     assert not covering_has_adjacent_nodes
 
 
-@given(graphs(), st.data())
+@given(mst.graphs(), st.data())
 def test_adding_node_to_maximal_covering_does_not_decrease_covering_size(
     graph, data
 ):
@@ -121,3 +108,15 @@ def test_adding_node_to_maximal_covering_does_not_decrease_covering_size(
 @given(st.none())
 def test_play_random_computer_vs_random_computer(_):
     play_random_computer_vs_random_computer()
+
+
+@given(mst.gamestate_strategy(), mst.action_strategy())
+def test_is_valid_action_return_value_agrees_with_take_action_being_none(
+    gamestate: types.GameState, action: types.Action
+):
+    take_action_claims_valid = take_action(gamestate, action) is not None
+    is_valid = is_valid_action(gamestate, action)
+
+    assert (
+        take_action_claims_valid == is_valid
+    ), f"{take_action_claims_valid=} == {is_valid=}"

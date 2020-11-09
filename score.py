@@ -51,12 +51,11 @@ T = t.TypeVar("T")
 ALL_COORDS = list(itertools.product(range(4), range(4)))
 
 
-def height_match(real_height: int, card_height: t.Union[int, str]):
-    if isinstance(card_height, int):
-        return real_height == card_height
+def height_match(stack_height: int, card_height: int, plus: bool):
+    if plus:
+        return stack_height >= card_height
     else:
-        assert len(card_height) == 2 and card_height[1] == "+"
-        return int(card_height[0]) == real_height
+        return stack_height == card_height
 
 
 def score_highest_surround(
@@ -143,7 +142,7 @@ def score_stack(
         for row in board
         for stack in row
         if stack.color == card_face.color
-        and height_match(stack.height, card_face.height)
+        and height_match(stack.height, card_face.height, card_face.plus)
     )
 
 
@@ -272,7 +271,11 @@ def score_two_diag(
         if (
             new_board[x][y]
             and new_board[x][y].color == card_face.stack1.color
-            and height_match(new_board[x][y].height, card_face.stack1.height)
+            and height_match(
+                new_board[x][y].height,
+                card_face.stack1.height,
+                card_face.stack1.plus,
+            )
         ):
             possible_blocks = [
                 [(x, y), (x + 1, y + 1)],
@@ -293,7 +296,9 @@ def score_two_diag(
                 if new_board[x2][y2]  # useful for if change to be optional
                 and new_board[x2][y2].color == card_face.stack2.color
                 and height_match(
-                    new_board[x2][y2].height, card_face.stack2.height
+                    new_board[x2][y2].height,
+                    card_face.stack2.height,
+                    card_face.stack2.plus,
                 )
             ]
             blocks.extend(possible_blocks)
@@ -320,7 +325,11 @@ def score_two_orthog(
         if (
             new_board[x][y]
             and new_board[x][y].color == card_face.stack1.color
-            and height_match(new_board[x][y].height, card_face.stack1.height)
+            and height_match(
+                new_board[x][y].height,
+                card_face.stack1.height,
+                card_face.stack1.plus,
+            )
         ):
             possible_blocks = [
                 [(x, y), (x + 1, y)],
@@ -340,7 +349,9 @@ def score_two_orthog(
                 if new_board[x2][y2]
                 and new_board[x2][y2].color == card_face.stack2.color
                 and height_match(
-                    new_board[x2][y2].height, card_face.stack2.height
+                    new_board[x2][y2].height,
+                    card_face.stack2.height,
+                    card_face.stack2.plus,
                 )
             ]
 

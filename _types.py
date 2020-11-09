@@ -39,8 +39,9 @@ class Square:
 
 @dataclass
 class Stack:
-    height: t.Union[int, str]
+    height: int
     color: Color
+    plus: bool = False
 
 
 @dataclass
@@ -97,27 +98,36 @@ ALL_CARDS = [
     Card(purple, purple, ThreeDiag(red), 4),
     Card(purple, purple, Stack(3, green), 4),
     Card(yellow, green, Stack(3, rainbow), 2),
-    Card(red, red, Stack("1+", green), 1),
+    Card(red, red, Stack(1, green, True), 1),
     Card(yellow, yellow, Square(green), 6),
-    Card(green, green, TwoOrthog(Stack("1+", purple), Stack("1+", yellow)), 3),
+    Card(
+        green,
+        green,
+        TwoOrthog(Stack(1, purple, True), Stack(1, yellow, True)),
+        3,
+    ),
     Card(green, green, HighestSurround(purple, yellow), 2),
     Card(red, red, Stack(2, yellow), 2),
     Card(green, green, ThreeL(yellow), 4),
     Card(yellow, yellow, ThreeDiag(green), 4),
-    Card(yellow, yellow, Stack("1+", purple), 1),
-    Card(yellow, yellow, Stack("1+", purple), 1),
+    Card(yellow, yellow, Stack(1, purple, True), 1),
+    Card(yellow, yellow, Stack(1, purple, True), 1),
     Card(red, yellow, ThreeOrthog(green), 4),
     Card(green, green, TwoOrthog(Stack(2, purple), Stack(2, purple)), 5),
     Card(purple, purple, ThreeL(green), 4),
     Card(red, red, ThreeL(purple), 4),
     Card(red, red, HighestSurround(yellow, purple), 2),
-    Card(purple, purple, Stack("1+", yellow), 1),
+    Card(purple, purple, Stack(1, yellow, True), 1),
     Card(purple, red, Stack(4, rainbow), 3),
     Card(yellow, purple, Stack(4, green), 5),
     Card(red, purple, Stack(2, rainbow), 1),
-    Card(green, green, TwoDiag(Stack("2+", purple), Stack("2+", red)), 5),
+    Card(
+        green, green, TwoDiag(Stack(2, purple, True), Stack(2, red, True)), 5
+    ),
     Card(purple, purple, TwoOrthog(Stack(2, red), Stack(2, red)), 5),
-    Card(green, green, TwoOrthog(Stack("1+", red), Stack("1+", purple)), 3),
+    Card(
+        green, green, TwoOrthog(Stack(1, red, True), Stack(1, purple, True)), 3
+    ),
     Card(red, red, Square(yellow), 6),
     Card(green, green, Stack(2, purple), 2),
     Card(red, red, Stack(3, purple), 4),
@@ -129,18 +139,34 @@ ALL_CARDS = [
     Card(green, purple, Stack(4, red), 5),
     Card(green, yellow, TwoOrthog(Stack(2, rainbow), Stack(2, rainbow)), 2),
     Card(yellow, yellow, Stack(2, green), 2),
-    Card(red, red, TwoDiag(Stack("2+", purple), Stack("2+", yellow)), 5),
+    Card(red, red, TwoDiag(Stack(2, purple, True), Stack(2, yellow, True)), 5),
     Card(green, green, HighestSurround(yellow, red), 2),
-    Card(purple, purple, TwoOrthog(Stack("1+", red), Stack("1+", green)), 3),
-    Card(green, green, Stack("1+", red), 1),
+    Card(
+        purple,
+        purple,
+        TwoOrthog(Stack(1, red, True), Stack(1, green, True)),
+        3,
+    ),
+    Card(green, green, Stack(1, red, True), 1),
     Card(red, red, ThreeDiag(yellow), 4),
     Card(yellow, yellow, TwoOrthog(Stack(2, green), Stack(2, green)), 5),
-    Card(purple, purple, TwoDiag(Stack("2+", red), Stack("2+", yellow)), 5),
+    Card(
+        purple, purple, TwoDiag(Stack(2, red, True), Stack(2, yellow, True)), 5
+    ),
     Card(yellow, yellow, Stack(3, red), 4),
-    Card(yellow, yellow, TwoDiag(Stack("2+", red), Stack("2+", green)), 5),
-    Card(red, red, TwoDiag(Stack("2+", yellow), Stack("2+", green)), 5),
-    Card(red, red, TwoOrthog(Stack("1+", green), Stack("1+", yellow)), 3),
-    Card(yellow, yellow, TwoDiag(Stack("2+", purple), Stack("2+", green)), 5),
+    Card(
+        yellow, yellow, TwoDiag(Stack(2, red, True), Stack(2, green, True)), 5
+    ),
+    Card(red, red, TwoDiag(Stack(2, yellow, True), Stack(2, green, True)), 5),
+    Card(
+        red, red, TwoOrthog(Stack(1, green, True), Stack(1, yellow, True)), 3
+    ),
+    Card(
+        yellow,
+        yellow,
+        TwoDiag(Stack(2, purple, True), Stack(2, green, True)),
+        5,
+    ),
     Card(purple, purple, HighestSurround(green, yellow), 2),
     Card(green, green, Square(purple), 6),
     Card(green, purple, ThreeOrthog(yellow), 4),
@@ -150,9 +176,17 @@ ALL_CARDS = [
     Card(red, green, Stack(4, yellow), 5),
     Card(purple, yellow, ThreeOrthog(red), 4),
     Card(yellow, yellow, HighestSurround(red, purple), 2),
-    Card(purple, purple, TwoOrthog(Stack("1+", yellow), Stack("1+", red)), 3),
     Card(
-        yellow, yellow, TwoOrthog(Stack("1+", purple), Stack("1+", green)), 3
+        purple,
+        purple,
+        TwoOrthog(Stack(1, yellow, True), Stack(1, red, True)),
+        3,
+    ),
+    Card(
+        yellow,
+        yellow,
+        TwoOrthog(Stack(1, purple, True), Stack(1, green, True)),
+        3,
     ),
 ]
 

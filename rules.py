@@ -62,24 +62,32 @@ def init_game(nplayers: int) -> types.GameState:
 
 MAX_HAND_SIZE = 4
 
+MAX_STACK_HEIGHT = 4
+
+BOARD_SIZE = 4
+
 
 def get_all_actions(
-    state: types.GameState,
+    gamestate: types.GameState,
 ) -> t.List[types.Action]:
-    """ Return all *valid* actions from this gamestate. """
+    """
+    Return all *valid* actions from this gamestate. This method is expensive
+    because it calls take_action (which makes a copy of the gamestate). Should
+    not be called in simulations
+    """
 
-    player_idx = state.turn
-    player = state.players[player_idx]
+    player_idx = gamestate.turn
+    player = gamestate.players[player_idx]
 
     draw_center_actions: t.List[types.Action] = (
-        [types.DrawCenterCardAction(i) for i in range(len(state.center))]
-        if len(state.players[player_idx].hand) < MAX_HAND_SIZE
+        [types.DrawCenterCardAction(i) for i in range(len(gamestate.center))]
+        if len(gamestate.players[player_idx].hand) < MAX_HAND_SIZE
         else []
     )
 
     draw_deck_actions: t.List[types.Action] = (
         [types.DrawDeckAction()]
-        if len(state.deck) > 0
+        if len(gamestate.deck) > 0
         # must play coin to draw from deck. score must be > 0
         and player.score > 0
         else []
@@ -97,13 +105,68 @@ def get_all_actions(
     ]
 
     actions = draw_center_actions + draw_deck_actions + play_card_actions
-    new_game_states = [take_action(state, action) for action in actions]
     valid_actions = [
-        action
-        for (action, newgamestate) in zip(actions, new_game_states)
-        if newgamestate is not None
+        action for action in actions if is_valid_action(gamestate, action)
     ]
     return valid_actions
+
+
+def is_valid_action(gamestate: types.GameState, action: types.Action) -> bool:
+    """
+    Returns if this action is valid from this gamestate. Much cheaper than
+    checking if take_action(gamestate, action) is None. We validate that
+    is_valid_action(G, A) is true iff take_action(G, A) is not None with a
+    hypothesis test
+    """
+
+    if isinstance(action, types.DrawCenterCardAction):
+        player = gamestate.players[gamestate.turn]
+        if len(gamestate.center) == 0:
+            return False
+        if len(player.hand) >= MAX_HAND_SIZE:
+            return False
+        if action.center_index >= len(gamestate.center):
+            return False
+    elif isinstance(action, types.PlayCardAction):
+        player = gamestate.players[gamestate.turn]
+        board = player.board
+        x1, y1 = action.placement1
+        x2, y2 = action.placement2
+
+        boardstacks_are_less_than_4 = (
+            board[x1][y1].height + 2 <= MAX_STACK_HEIGHT
+            if (x1, y1) == (x2, y2)
+            else (
+                board[x1][y1].height + 1 <= MAX_STACK_HEIGHT
+                and board[x2][y2].height + 1 <= MAX_STACK_HEIGHT
+            )
+        )
+        if not boardstacks_are_less_than_4:
+            return False
+
+        if action.hand_index >= len(player.hand):
+            return False
+        card = player.hand[action.hand_index]
+        color_piles_are_non_negative = (
+            gamestate.color_piles[card.color1] - 2 >= 0
+            if card.color1 == card.color2
+            else (
+                gamestate.color_piles[card.color1] - 1 >= 0
+                and gamestate.color_piles[card.color2] - 1 >= 0
+            )
+        )
+        if not color_piles_are_non_negative:
+            return False
+    elif isinstance(action, types.DrawDeckAction):
+        player = gamestate.players[gamestate.turn]
+        if len(gamestate.deck) == 0:
+            return False
+        if len(player.hand) >= MAX_HAND_SIZE:
+            return False
+        if player.score <= 0:
+            return False
+
+    return True
 
 
 def _is_gamestate_valid(state: types.GameState) -> bool:
@@ -143,11 +206,15 @@ def take_action(
     old_state: types.GameState,
     action: types.Action,
 ) -> t.Optional[types.GameState]:
-    """ Returns new gamestate, or None if action was invalid """
+    """
+    Returns new gamestate, or None if action was invalid. This method is
+    expensive because it makes a copy of the gamestate so it doesn't have to
+    mutate the gamestate. Should not be called too much in simulations.
+    """
     new_state = utils.copy(old_state)
     player = new_state.players[new_state.turn]
     if isinstance(action, types.DrawCenterCardAction):
-        if len(new_state.center) == 0:
+        if action.center_index >= len(new_state.center):
             return None
         (drawn_card, score) = new_state.center.pop(action.center_index)
         player.hand.append(drawn_card)
@@ -157,6 +224,8 @@ def take_action(
             new_state.center.append((new_state.deck.pop(), 0))
 
     elif isinstance(action, types.PlayCardAction):
+        if action.hand_index >= len(player.hand):
+            return None
         card = player.hand.pop(action.hand_index)
         x1, y1 = action.placement1
         x2, y2 = action.placement2
@@ -173,23 +242,36 @@ def take_action(
 
         player.score += score_play_action(old_state, new_state, action)
     elif isinstance(action, types.DrawDeckAction):
-        if player.score == 0:
+        if len(new_state.deck) == 0:
             return None
         card = new_state.deck.pop()
+
+        if len(player.hand) >= MAX_HAND_SIZE:
+            return None
         player.hand.append(card)
 
         # put a coin on an arbitrary center card that has the lowest number of
         # coins on it . TODO: fix it so the player has a choice of what card to
         # put it on
+        if player.score == 0:
+            return None
         player.score -= 1
-        idx, card, score = min(
-            (
-                (idx, card, score)
-                for (idx, (card, score)) in enumerate(new_state.center)
-            ),
-            key=lambda x: x[2],
-        )
-        new_state.center[idx] = (card, score + 1)
+
+        if new_state.center:
+            # if there are cards in the center, add 1 coin to the card with the
+            # smallest card stack. In practice there will always be cards in
+            # the center. This check only exists so hypothesis tests can make
+            # empty centers and not blow up
+            idx, card, score = min(
+                (
+                    (idx, card, score)
+                    for (idx, (card, score)) in enumerate(new_state.center)
+                ),
+                key=lambda x: x[2],
+            )
+            new_state.center[idx] = (card, score + 1)
+    else:
+        utils.assert_never(f"unknown action type {type(action)}")
 
     new_state.turn = (new_state.turn + 1) % len(new_state.players)
 

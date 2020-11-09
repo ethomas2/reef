@@ -3,9 +3,10 @@ import random
 import copy
 import typing as t
 
-import _types as types
-from utils import assert_never
 from score import score_play_action
+from utils import assert_never
+import _types as types
+import utils
 
 
 def init_game(nplayers: int) -> types.GameState:
@@ -143,7 +144,7 @@ def take_action(
     action: types.Action,
 ) -> t.Optional[types.GameState]:
     """ Returns new gamestate, or None if action was invalid """
-    new_state = copy.deepcopy(old_state)
+    new_state = utils.copy(old_state)
     player = new_state.players[new_state.turn]
     if isinstance(action, types.DrawCenterCardAction):
         if len(new_state.center) == 0:

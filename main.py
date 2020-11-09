@@ -44,10 +44,8 @@ def play_random_computer_vs_random_computer(
             if clear_terminal:
                 subprocess.call("clear")
             print(fmt.format_gamestate(gamestate), file=output)
-            if is_over(gamestate):
-                print("Game Over", file=output)
-                break
-            print("\n", file=output)
+        if is_over(gamestate):
+            break
 
         actions = get_all_actions(gamestate)
         assert (
@@ -59,6 +57,9 @@ def play_random_computer_vs_random_computer(
             newgamestate is not None
         ), "get_all_actions() returned invalid action"
         gamestate = newgamestate
+
+    if output:
+        print("Game Over", file=output)
 
 
 if __name__ == "__main__":

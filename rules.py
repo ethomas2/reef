@@ -59,20 +59,30 @@ def init_game(nplayers: int) -> types.GameState:
     return gamestate
 
 
+MAX_HAND_SIZE = 4
+
+
 def get_all_actions(
     state: types.GameState,
 ) -> t.List[types.Action]:
     """ Return all *valid* actions from this gamestate. """
+
     player_idx = state.turn
     player = state.players[player_idx]
 
-    draw_center_actions: t.List[types.Action] = [
-        types.DrawCenterCardAction(i)
-        for i in range(len(state.center))
-        if len(state.players[player_idx].hand) < 3
-    ]
+    draw_center_actions: t.List[types.Action] = (
+        [types.DrawCenterCardAction(i) for i in range(len(state.center))]
+        if len(state.players[player_idx].hand) < MAX_HAND_SIZE
+        else []
+    )
 
-    draw_deck_action: types.Action = types.DrawDeckAction()
+    draw_deck_actions: t.List[types.Action] = (
+        [types.DrawDeckAction()]
+        if len(state.deck) > 0
+        # must play coin to draw from deck. score must be > 0
+        and player.score > 0
+        else []
+    )
 
     play_card_actions: t.List[types.Action] = [
         types.PlayCardAction(
@@ -85,7 +95,7 @@ def get_all_actions(
         for (x2, y2) in itertools.product(range(4), repeat=2)
     ]
 
-    actions = draw_center_actions + [draw_deck_action] + play_card_actions
+    actions = draw_center_actions + draw_deck_actions + play_card_actions
     new_game_states = [take_action(state, action) for action in actions]
     valid_actions = [
         action

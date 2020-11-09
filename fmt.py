@@ -186,6 +186,7 @@ def format_gamestate(gamestate: types.GameState) -> str:
     center = format_center(gamestate.center)
     leftcol = "\n".join(
         [
+            f"Turn: {gamestate.turn}, decksize: {len(gamestate.deck)}",
             f"Score player 0 : {gamestate.players[0].score}",
             format_hand(hand1),
             format_board(board1),

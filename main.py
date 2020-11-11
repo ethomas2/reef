@@ -1,12 +1,14 @@
-import sys
+import argparse
 import random
 import subprocess
+import sys
 
 import typing as t
 
 from engine import get_action
 from rules import init_game, take_action, is_over, get_all_actions
 import fmt
+import utils
 
 
 def play_human_vs_human():
@@ -33,7 +35,6 @@ def play_human_vs_human():
 def play_random_computer_vs_random_computer(
     seed: t.Optional[int] = None,
     output: t.Optional[t.IO] = None,
-    clear_terminal: bool = False,
 ):
     if seed:
         random.seed(seed)
@@ -41,8 +42,6 @@ def play_random_computer_vs_random_computer(
     gamestate = init_game(nplayers)
     while True:
         if output:
-            if clear_terminal:
-                subprocess.call("clear")
             print(fmt.format_gamestate(gamestate), file=output)
         if is_over(gamestate):
             break
@@ -63,13 +62,30 @@ def play_random_computer_vs_random_computer(
 
 
 if __name__ == "__main__":
-    if False:
-        play_random_computer_vs_random_computer(
-            seed=0, output=sys.stdout, clear_terminal=True
+    # file, seed
+
+    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser.add_argument(
+        "--file",
+        default="-",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+    )
+
+    args = vars(parser.parse_args())
+    filepath, seed = args.get("file"), args.get("seed")
+    if filepath is None:
+        utils.assert_never(
+            "Argparse did not force user to provide --file argument"
         )
 
-    if False:
-        with open("scrap/gamelog.log", "w+") as f:
-            play_random_computer_vs_random_computer(seed=0, output=f)
-
-    play_random_computer_vs_random_computer(seed=0)
+    if filepath == "-":
+        play_random_computer_vs_random_computer(seed=seed, output=sys.stdout)
+    else:
+        with open(filepath, "w+") as f:
+            play_random_computer_vs_random_computer(seed=seed, output=f)

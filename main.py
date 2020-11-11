@@ -17,6 +17,7 @@ def play_human_vs_human():
     while True:
         subprocess.call("clear")
         print(fmt.format_gamestate(gamestate))
+        print("\n")
         if is_over(gamestate):
             print("Game Over")
             break
@@ -43,6 +44,7 @@ def play_random_computer_vs_random_computer(
     while True:
         if output:
             print(fmt.format_gamestate(gamestate), file=output)
+            print("\n", file=output)
         if is_over(gamestate):
             break
 

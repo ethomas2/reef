@@ -1,0 +1,4 @@
+#!/bin/bash
+
+python -m cProfile -o profiles/$(git log -1 --format=%h) main.py
+

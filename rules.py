@@ -40,11 +40,11 @@ def init_game(nplayers: int) -> types.GameState:
         deck=deck,
         color_piles={
             color: (
-                20
+                18
                 if nplayers <= 2
-                else 30
+                else 24
                 if nplayers == 3
-                else 35
+                else 28
                 if nplayers == 4
                 else assert_never(f"Invalid Number of Players {nplayers}")
             )

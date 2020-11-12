@@ -111,7 +111,6 @@ ALL_CARDS = [
     Card(green, green, ThreeL(yellow), 4),
     Card(yellow, yellow, ThreeDiag(green), 4),
     Card(yellow, yellow, Stack(1, purple, True), 1),
-    Card(yellow, yellow, Stack(1, purple, True), 1),
     Card(red, yellow, ThreeOrthog(green), 4),
     Card(green, green, TwoOrthog(Stack(2, purple), Stack(2, purple)), 5),
     Card(purple, purple, ThreeL(green), 4),

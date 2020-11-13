@@ -41,6 +41,7 @@ def play_random_computer_vs_random_computer(
         random.seed(seed)
     nplayers = 2
     gamestate = init_game(nplayers)
+    n_turns_skipped_in_a_row = 0
     while True:
         if output:
             print(fmt.format_gamestate(gamestate), file=output)
@@ -49,9 +50,18 @@ def play_random_computer_vs_random_computer(
             break
 
         actions = get_all_actions(gamestate)
-        assert (
-            len(actions) > 0
-        ), "player has no actions even though game is not over"
+
+        # hack to get around the no valid actions problem
+        if len(actions) == 0:
+            print(f"NO ACTIONS for player {gamestate.turn}. SKIPPING")
+            n_turns_skipped_in_a_row += 1
+            if n_turns_skipped_in_a_row == nplayers:
+                break
+            else:
+                continue
+        else:
+            n_turns_skipped_in_a_row = 0
+
         action = random.choice(actions)
         newgamestate = take_action(gamestate, action)
         assert (

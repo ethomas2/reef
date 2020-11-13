@@ -37,7 +37,7 @@ def play_random_computer_vs_random_computer(
     seed: t.Optional[int] = None,
     output: t.Optional[t.IO] = None,
 ):
-    if seed:
+    if seed is not None:
         random.seed(seed)
     nplayers = 2
     gamestate = init_game(nplayers)

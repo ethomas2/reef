@@ -212,16 +212,22 @@ def take_action(
     mutate the gamestate. Should not be called too much in simulations.
     """
     new_state = utils.copy(old_state)
-    player = new_state.players[new_state.turn]
+    return take_action_mut(new_state, action)
+
+
+def take_action_mut(
+    state: types.GameState, action: types.Action
+) -> t.Optional[types.GameState]:
+    player = state.players[state.turn]
     if isinstance(action, types.DrawCenterCardAction):
-        if action.center_index >= len(new_state.center):
+        if action.center_index >= len(state.center):
             return None
-        (drawn_card, score) = new_state.center.pop(action.center_index)
+        (drawn_card, score) = state.center.pop(action.center_index)
         player.hand.append(drawn_card)
         player.score += score
 
-        if len(new_state.deck) > 0:
-            new_state.center.append((new_state.deck.pop(), 0))
+        if len(state.deck) > 0:
+            state.center.append((state.deck.pop(), 0))
 
     elif isinstance(action, types.PlayCardAction):
         if action.hand_index >= len(player.hand):
@@ -237,14 +243,14 @@ def take_action(
             player.board[x2][y2].height + 1,
             card.color2,
         )
-        new_state.color_piles[card.color1] -= 1
-        new_state.color_piles[card.color2] -= 1
+        state.color_piles[card.color1] -= 1
+        state.color_piles[card.color2] -= 1
 
-        player.score += score_play_action(old_state, new_state, action)
+        player.score += score_play_action(state, action, card)
     elif isinstance(action, types.DrawDeckAction):
-        if len(new_state.deck) == 0:
+        if len(state.deck) == 0:
             return None
-        card = new_state.deck.pop()
+        card = state.deck.pop()
 
         if len(player.hand) >= MAX_HAND_SIZE:
             return None
@@ -257,7 +263,7 @@ def take_action(
             return None
         player.score -= 1
 
-        if new_state.center:
+        if state.center:
             # if there are cards in the center, add 1 coin to the card with the
             # smallest card stack. In practice there will always be cards in
             # the center. This check only exists so hypothesis tests can make
@@ -265,19 +271,19 @@ def take_action(
             idx, card, score = min(
                 (
                     (idx, card, score)
-                    for (idx, (card, score)) in enumerate(new_state.center)
+                    for (idx, (card, score)) in enumerate(state.center)
                 ),
                 key=lambda x: x[2],
             )
-            new_state.center[idx] = (card, score + 1)
+            state.center[idx] = (card, score + 1)
     else:
         utils.assert_never(f"unknown action type {type(action)}")
 
-    new_state.turn = (new_state.turn + 1) % len(new_state.players)
+    state.turn = (state.turn + 1) % len(state.players)
 
-    if not _is_gamestate_valid(new_state):
+    if not _is_gamestate_valid(state):
         return None
-    return new_state
+    return state
 
 
 def is_over(gamestate: types.GameState) -> bool:

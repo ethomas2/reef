@@ -6,41 +6,74 @@ import utils
 
 
 def score_play_action(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    card_played: types.Card,
 ) -> int:
-    player = old_state.players[old_state.turn]
-    card_played = player.hand[action.hand_index]
+    player_idx = (resulting_state.turn - 1) % len(resulting_state.players)
     if isinstance(card_played.card_face, types.HighestSurround):
         return score_highest_surround(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.Square):
         return score_square(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.Stack):
-        return score_stack(old_state, new_state, action, card_played.card_face)
+        return score_stack(
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
+        )
     elif isinstance(card_played.card_face, types.ThreeDiag):
         return score_three_diag(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.ThreeL):
         return score_three_L(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.ThreeOrthog):
         return score_three_orthog(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.TwoDiag):
         return score_two_diag(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     elif isinstance(card_played.card_face, types.TwoOrthog):
         return score_two_orthog(
-            old_state, new_state, action, card_played.card_face
+            resulting_state,
+            action,
+            player_idx,
+            card_played.card_face,
+            card_played,
         )
     else:
         utils.assert_never(f"unknown card face {type(card_played.card_face)}")
@@ -59,12 +92,13 @@ def height_match(stack_height: int, card_height: int, plus: bool):
 
 
 def score_highest_surround(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.HighestSurround,
+    card: types.Card,
 ) -> int:
-    player = new_state.players[old_state.turn]
+    player = resulting_state.players[player_idx]
     board = player.board
 
     center_color = card_face.center
@@ -104,10 +138,11 @@ def score_highest_surround(
 
 
 def score_square(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.Square,
+    card: types.Card,
 ) -> int:
     """
     Form a graph where each node represents a square (represented by it's top
@@ -115,7 +150,6 @@ def score_square(
     overlap (i.e. the top left coords of the squares are too close together).
     Return the size of the maximal covering. (See maximal_covering for details)
     """
-    card = old_state.players[old_state.turn].hand[action.hand_index]
     block_top_left_coords = list(itertools.product(range(3), range(3)))
     exclusion_edges = [
         ((x1, y1), (x2, y2))
@@ -130,15 +164,16 @@ def score_square(
 
 
 def score_stack(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.Stack,
+    card: types.Card,
 ) -> int:
-    board = new_state.players[old_state.turn].board
+    board = resulting_state.players[player_idx].board
 
     return sum(
-        1
+        card.victory_points
         for row in board
         for stack in row
         if stack.color == card_face.color
@@ -147,12 +182,12 @@ def score_stack(
 
 
 def score_three_diag(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.ThreeDiag,
+    card: types.Card,
 ) -> int:
-    card = old_state.players[old_state.turn].hand[action.hand_index]
     top_left_coords = itertools.product(range(2), range(4))
     directions = [(1, 1), (1, -1)]
     diags = [
@@ -170,13 +205,13 @@ def score_three_diag(
 
 
 def score_three_L(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.ThreeL,
+    card: types.Card,
 ) -> int:
-    card = old_state.players[old_state.turn].hand[action.hand_index]
-    new_board = new_state.players[old_state.turn].board
+    new_board = resulting_state.players[player_idx].board
 
     blocks = []
     for (x, y) in ALL_COORDS:
@@ -215,13 +250,13 @@ def score_three_L(
 
 
 def score_three_orthog(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.ThreeOrthog,
+    card: types.Card,
 ) -> int:
-    card = old_state.players[old_state.turn].hand[action.hand_index]
-    new_board = new_state.players[old_state.turn].board
+    new_board = resulting_state.players[player_idx].board
 
     blocks = []
     for (x, y) in ALL_COORDS:
@@ -258,13 +293,13 @@ def score_three_orthog(
 
 
 def score_two_diag(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.TwoDiag,
+    card: types.Card,
 ) -> int:
-    card = old_state.players[old_state.turn].hand[action.hand_index]
-    new_board = new_state.players[old_state.turn].board
+    new_board = resulting_state.players[player_idx].board
 
     blocks = []
     for (x, y) in ALL_COORDS:
@@ -312,13 +347,13 @@ def score_two_diag(
 
 
 def score_two_orthog(
-    old_state: types.GameState,
-    new_state: types.GameState,
+    resulting_state: types.GameState,
     action: types.PlayCardAction,
+    player_idx: int,
     card_face: types.TwoOrthog,
+    card: types.Card,
 ) -> int:
-    card = old_state.players[old_state.turn].hand[action.hand_index]
-    new_board = new_state.players[old_state.turn].board
+    new_board = resulting_state.players[player_idx].board
 
     blocks = []
     for (x, y) in ALL_COORDS:

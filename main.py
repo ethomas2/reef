@@ -6,7 +6,13 @@ import sys
 import typing as t
 
 from engine import get_action
-from rules import init_game, take_action, is_over, get_all_actions
+from rules import (
+    init_game,
+    take_action,
+    take_action_mut,
+    is_over,
+    get_all_actions,
+)
 import fmt
 import utils
 
@@ -63,7 +69,7 @@ def play_random_computer_vs_random_computer(
             n_turns_skipped_in_a_row = 0
 
         action = random.choice(actions)
-        newgamestate = take_action(gamestate, action)
+        newgamestate = take_action_mut(gamestate, action)
         assert (
             newgamestate is not None
         ), "get_all_actions() returned invalid action"

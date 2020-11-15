@@ -11,7 +11,7 @@ from rules import (
     take_action,
     take_action_mut,
     is_over,
-    get_all_actions,
+    get_random_action,
 )
 import fmt
 import utils
@@ -55,11 +55,14 @@ def play_random_computer_vs_random_computer(
         if is_over(gamestate):
             break
 
-        actions = get_all_actions(gamestate)
+        random_action = get_random_action(gamestate)
 
         # hack to get around the no valid actions problem
-        if len(actions) == 0:
-            print(f"NO ACTIONS for player {gamestate.turn}. SKIPPING")
+        if random_action is None:
+            print(
+                f"NO ACTIONS for player {gamestate.turn}. SKIPPING",
+                file=output,
+            )
             n_turns_skipped_in_a_row += 1
             if n_turns_skipped_in_a_row == nplayers:
                 break
@@ -68,11 +71,11 @@ def play_random_computer_vs_random_computer(
         else:
             n_turns_skipped_in_a_row = 0
 
-        action = random.choice(actions)
-        newgamestate = take_action_mut(gamestate, action)
+        newgamestate = take_action_mut(gamestate, random_action)
         assert (
             newgamestate is not None
-        ), "get_all_actions() returned invalid action"
+        ), "random_action() returned invalid action"
+
         gamestate = newgamestate
 
     if output:

@@ -6,7 +6,12 @@ from hypothesis import given, strategies as st, note
 import fmt
 import _types as types
 from score import maximal_covering
-from rules import is_valid_action, take_action
+from rules import (
+    is_valid_action,
+    take_action,
+    get_random_action,
+    get_all_actions,
+)
 from main import play_random_computer_vs_random_computer
 
 import strategies as mst  # mystrat
@@ -120,3 +125,30 @@ def test_is_valid_action_return_value_agrees_with_take_action_being_none(
     assert (
         take_action_claims_valid == is_valid
     ), f"{take_action_claims_valid=} == {is_valid=}"
+
+
+@given(mst.gamestate_strategy())
+def test_get_random_action_returns_valid_action(gamestate: types.GameState):
+    # TODO: it would be great to somehow have a test that tests that all the
+    # possibilities returnd by get_random_action are exactly the same as
+    # get_all_actions. Consider writing a test that keeps generating actions
+    # until it's either generated everyitng or it's run 100k times
+    random_action = get_random_action(gamestate)
+    all_actions = get_all_actions(gamestate)
+    note(f"{random_action=}")
+    note(f"{len(all_actions)=}")
+
+    if all_actions == []:
+        assert (
+            random_action is None
+        ), "get_all_actions returns [] but random_action is not None"
+    if random_action is None:
+        assert all_actions == []
+
+    assert random_action is None or is_valid_action(
+        gamestate, random_action
+    ), "get_random_action returned an invalid action"
+
+    assert (
+        random_action is None or random_action in all_actions
+    ), "get_random_action returned an action not contained in get_all_actions"

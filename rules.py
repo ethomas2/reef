@@ -111,6 +111,88 @@ def get_all_actions(
     return valid_actions
 
 
+def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
+
+    player_idx = gamestate.turn
+    player = gamestate.players[player_idx]
+
+    # can you do a draw card action
+    possible_action_types: t.List[t.Type[types.Action]] = []
+    if gamestate.center != [] and len(player.hand) < MAX_HAND_SIZE:
+        possible_action_types.append(types.DrawCenterCardAction)
+
+    # can you do a draw deck action
+    if (
+        gamestate.deck != []
+        and player.score > 0
+        and len(player.hand) < MAX_HAND_SIZE
+    ):
+        possible_action_types.append(types.DrawDeckAction)
+
+    # can you do a play card action
+    hand_idx_choices = [
+        idx
+        for (idx, card) in enumerate(player.hand)
+        if (
+            card.color1 == card.color2
+            and gamestate.color_piles[card.color1] >= 2
+        )
+        or (
+            card.color1 != card.color2
+            and gamestate.color_piles[card.color1] >= 1
+            and gamestate.color_piles[card.color2] >= 1
+        )
+    ]
+
+    if player.hand != [] and hand_idx_choices != []:
+        # TODO: maybe put a check in here to make sure there's a place to put
+        # the card (e.g. haven't filled up the board). Should never occur in a
+        # real game bc you'll run out of deck before you fill up the board
+        possible_action_types.append(types.PlayCardAction)
+
+    if possible_action_types == []:
+        return None
+
+    # Now take an action
+    action_type = random.choice(possible_action_types)
+
+    if action_type == types.DrawCenterCardAction:
+        return types.DrawCenterCardAction(
+            random.randint(0, len(gamestate.center)) - 1
+        )
+    elif action_type == types.DrawDeckAction:
+        return types.DrawDeckAction()
+    elif action_type == types.PlayCardAction:
+        placement1 = random.choice(
+            [
+                (x, y)
+                for (x, y) in itertools.product(
+                    range(BOARD_SIZE), range(BOARD_SIZE)
+                )
+                if player.board[x][y].height < MAX_STACK_HEIGHT
+            ]
+        )
+        x, y = placement1
+        player.board[x][y].height += 1  # kinda a hack
+        placement2 = random.choice(
+            [
+                (x, y)
+                for (x, y) in itertools.product(
+                    range(BOARD_SIZE), range(BOARD_SIZE)
+                )
+                if player.board[x][y].height < MAX_STACK_HEIGHT
+            ]
+        )
+        player.board[x][y].height -= 1
+        return types.PlayCardAction(
+            hand_index=random.choice(hand_idx_choices),
+            placement1=placement1,
+            placement2=placement2,
+        )
+    else:
+        utils.assert_never("invalid action type in get_random_action")
+
+
 def is_valid_action(gamestate: types.GameState, action: types.Action) -> bool:
     """
     Returns if this action is valid from this gamestate. Much cheaper than

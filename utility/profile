@@ -1,4 +1,17 @@
 #!/bin/bash
+set -euxo pipefail
 
-python -m cProfile -o profiles/$(git log -1 --format=%h) main.py
+set +e
+test ! -z "$(git diff --name-only HEAD)"
+HAS_CHANGES=$?
+set -e
+
+
+FILENAME="profiles/$(git log -1 --format=%h)"
+
+if [ "$HAS_CHANGES" -eq 0 ]; then
+  FILENAME="$FILENAME-dirty"
+fi
+
+python -m cProfile -o "$FILENAME" main.py --no-file
 

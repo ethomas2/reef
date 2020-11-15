@@ -83,11 +83,13 @@ if __name__ == "__main__":
     # file, seed
 
     parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument(
+    mut_grp = parser.add_mutually_exclusive_group()
+    mut_grp.add_argument(
         "--file",
         default="-",
         type=str,
     )
+    mut_grp.add_argument("--no-file", action="store_true")
 
     parser.add_argument(
         "--seed",
@@ -96,14 +98,20 @@ if __name__ == "__main__":
     )
 
     args = vars(parser.parse_args())
-    filepath, seed = args.get("file"), args.get("seed")
-    if filepath is None:
-        utils.assert_never(
-            "Argparse did not force user to provide --file argument"
-        )
+    filepath, nofile, seed = (
+        args.get("file"),
+        args.get("no_file"),
+        args.get("seed"),
+    )
 
-    if filepath == "-":
+    if nofile:
+        play_random_computer_vs_random_computer(seed=seed, output=None)
+    elif filepath == "-":
         play_random_computer_vs_random_computer(seed=seed, output=sys.stdout)
     else:
+        if filepath is None:
+            utils.assert_never(
+                "Argparse allowed file=None even though nofile is not given"
+            )
         with open(filepath, "w+") as f:
             play_random_computer_vs_random_computer(seed=seed, output=f)

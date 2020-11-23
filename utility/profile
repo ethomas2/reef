@@ -13,5 +13,5 @@ if [ "$HAS_CHANGES" -eq 0 ]; then
   FILENAME="$FILENAME-dirty"
 fi
 
-python -m cProfile -o "$FILENAME" main.py --no-file
+python -m cProfile -o "$FILENAME" reef/main.py --no-file
 

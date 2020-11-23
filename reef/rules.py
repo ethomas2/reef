@@ -3,9 +3,9 @@ import random
 import copy
 import typing as t
 
-from score import score_play_action
+from reef.score import score_play_action
 from utils import assert_never
-import _types as types
+from reef import _types as types
 import utils
 
 

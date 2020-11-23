@@ -1,9 +1,9 @@
 set -euxo pipefail
 
-mypy *py
+mypy $(git ls-files | grep py$)
 
-pytest test.py
+pytest reef/tests/test.py
 
 time for i in $(seq 1 100); do
-  python main.py --seed $i > /dev/null
+  python reef/main.py --seed $i --no-file
 done

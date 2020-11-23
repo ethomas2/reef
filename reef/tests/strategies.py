@@ -3,13 +3,13 @@ import itertools
 # from hypothesis import assume
 import hypothesis.strategies as st
 
-from rules import (
+from reef.rules import (
     MAX_HAND_SIZE,
     BOARD_SIZE,
     MAX_STACK_HEIGHT,
     # _is_gamestate_valid,
 )
-import _types as types
+from reef import _types as types
 
 
 @st.composite

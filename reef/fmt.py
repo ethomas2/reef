@@ -4,7 +4,7 @@ import itertools
 import io
 
 import utils
-import _types as types
+from reef import _types as types
 
 
 def hconcat(*schunks: str) -> str:

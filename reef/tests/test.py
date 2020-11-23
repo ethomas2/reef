@@ -3,18 +3,18 @@ import random
 
 from hypothesis import given, strategies as st, note
 
-import fmt
-import _types as types
-from score import maximal_covering
-from rules import (
+from reef import fmt
+from reef import _types as types
+from reef.score import maximal_covering
+from reef.rules import (
     is_valid_action,
     take_action,
     get_random_action,
     get_all_actions,
 )
-from main import play_random_computer_vs_random_computer
+from reef.main import play_random_computer_vs_random_computer
 
-import strategies as mst  # mystrat
+import reef.tests.strategies as mst  # mystrat
 
 
 def test_pprint_board():

@@ -5,15 +5,15 @@ import sys
 
 import typing as t
 
-from engine import get_action
-from rules import (
+from reef.engine import get_action
+from reef.rules import (
     init_game,
     take_action,
     take_action_mut,
     is_over,
     get_random_action,
 )
-import fmt
+from reef import fmt
 import utils
 
 
@@ -59,10 +59,11 @@ def play_random_computer_vs_random_computer(
 
         # hack to get around the no valid actions problem
         if random_action is None:
-            print(
-                f"NO ACTIONS for player {gamestate.turn}. SKIPPING",
-                file=output,
-            )
+            if output:
+                print(
+                    f"NO ACTIONS for player {gamestate.turn}. SKIPPING",
+                    file=output,
+                )
             n_turns_skipped_in_a_row += 1
             if n_turns_skipped_in_a_row == nplayers:
                 break

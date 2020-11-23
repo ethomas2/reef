@@ -4,7 +4,7 @@ Responsible for communication with outside world
 
 import typing as t
 
-import _types as types
+from reef import _types as types
 import textwrap
 import utils
 

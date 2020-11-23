@@ -39,7 +39,7 @@ def take_action_mut(
         if gamestate.turn == "O"
         else "O"
         if gamestate.turn == "X"
-        else utils.assert_never(f"Unknown board turn {board.turn}")
+        else utils.assert_never(f"Unknown board turn {gamestate.turn}")
     )
     return gamestate
 

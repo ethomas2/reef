@@ -105,12 +105,26 @@ def is_over(state: types.GameState) -> bool:
     return False
 
 
-def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
+def undo_action(gamestate: types.GameState, action: types.Action):
+    gamestate.turn = (gamestate.turn + 1) % 2
+
+    c, _ = action
+    r = next((i for i in range(BOARD_HEIGHT) if i is not None), None)
+    assert (
+        r is not None
+    ), "Tried to undo action for a column which does not have a marker in it"
+    gamestate.board[r][c] = None
+
+
+def get_all_actions(gamestate: types.GameState) -> t.List[types.Action]:
     turn = gamestate.turn
     board = gamestate.board
-    possible_actions = [
-        (i, turn) for i in range(BOARD_LENGTH) if board[0][i] is None
-    ]
-    if len(possible_actions) == 0:
+    actions = [(i, turn) for i in range(BOARD_LENGTH) if board[0][i] is None]
+    return actions
+
+
+def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
+    actions = get_all_actions(gamestate)
+    if len(actions) == 0:
         return None
-    return random.choice(possible_actions)
+    return random.choice(actions)

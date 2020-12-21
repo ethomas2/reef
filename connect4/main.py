@@ -10,9 +10,14 @@ from connect4.rules import (
     take_action_mut,
     is_over,
     get_random_action,
+    undo_action,
+    get_all_actions,
 )
+from connect4.heuristic import heuristic
 from connect4 import fmt
 import utils
+import connect4._types as types
+from engine import minimax
 
 
 def play_random_computer_vs_random_computer(
@@ -36,6 +41,41 @@ def play_random_computer_vs_random_computer(
             )
 
         newgamestate = take_action_mut(gamestate, random_action)
+        assert (
+            newgamestate is not None
+        ), "random_action() returned invalid action"
+
+        gamestate = newgamestate
+
+    if output:
+        print("Game Over", file=output)
+
+
+def play_minimax_vs_minimax(output: t.Optional[t.IO] = None):
+    gamestate = init_game()
+    while True:
+        if output:
+            print(fmt.format_gamestate(gamestate), file=output)
+            print("\n", file=output)
+        if is_over(gamestate):
+            break
+
+        config = types.MinimaxConfig(
+            action=types.MutableActionConfig(
+                take_action_mut=take_action_mut,
+                undo_action=undo_action,
+            ),
+            get_all_actions=get_all_actions,
+            is_over=is_over,
+            heuristic=heuristic,
+        )
+        action = minimax(config, gamestate)
+        if action is None:
+            utils.assert_never(
+                "Minimax action is None even though game is not over"
+            )
+
+        newgamestate = take_action_mut(gamestate, action)
         assert (
             newgamestate is not None
         ), "random_action() returned invalid action"

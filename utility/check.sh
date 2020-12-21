@@ -1,6 +1,6 @@
 set -euxo pipefail
 
-mypy $(git ls-files | grep py$)
+mypy $(fd -e py)
 
 pytest reef/tests/test.py
 

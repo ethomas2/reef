@@ -1,3 +1,4 @@
+import contextlib
 import argparse
 import random
 import sys
@@ -63,21 +64,43 @@ if __name__ == "__main__":
         default=0,
     )
 
+    mut_grp2 = parser.add_mutually_exclusive_group()
+    mut_grp2.add_argument(
+        "--mcts",
+        default=False,
+        action="store_true",
+    )
+    mut_grp2.add_argument(
+        "--minimax",
+        default=False,
+        action="store_true",
+    )
+    mut_grp2.add_argument(
+        "--random",
+        default=False,
+        action="store_true",
+    )
+
     args = vars(parser.parse_args())
-    filepath, nofile, seed = (
+    filepath, nofile, seed, ai_mcts, ai_minimax, ai_random = (
         args.get("file"),
         args.get("no_file"),
         args.get("seed"),
+        args.get("mcts"),
+        args.get("minimax"),
+        args.get("random"),
     )
 
-    if nofile:
-        play_random_computer_vs_random_computer(seed=seed, output=None)
-    elif filepath == "-":
-        play_random_computer_vs_random_computer(seed=seed, output=sys.stdout)
-    else:
-        if filepath is None:
+    with contextlib.ExitStack() as stack:
+        if nofile:
+            output = None
+        elif filepath == "-":
+            output = sys.stdout
+        elif filepath is not None:
+            output = stack.enter_context(open(filepath, "w+"))
+        else:
             utils.assert_never(
                 "Argparse allowed file=None even though nofile is not given"
             )
-        with open(filepath, "w+") as f:
-            play_random_computer_vs_random_computer(seed=seed, output=f)
+
+        play_random_computer_vs_random_computer(seed=seed, output=output)

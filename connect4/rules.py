@@ -30,7 +30,7 @@ def take_action_mut(
     )
 
     if next_available_row is None:
-        raise Exception(f"cannot take action {action} on current board")
+        return None
 
     board[next_available_row][col] = mark
     gamestate.num_moves += 1

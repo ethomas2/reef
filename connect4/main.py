@@ -56,6 +56,8 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
                 newgamestate = take_action_mut(gamestate, action)
                 if newgamestate is None:
                     print("Invalid action")
+                else:
+                    break
         else:
             action = agent.get_action(gamestate)
             print(action)
@@ -105,6 +107,26 @@ def get_agent(agent_type: AgentType) -> Agent:
             agent_type=agent_type,
             get_action=get_action,
         )
+    elif agent_type == "human":
+
+        def get_action(gamestate: c4types.GameState) -> c4types.Action:
+            while True:
+                inp = input(
+                    f"Choose column (0-6) for player {gamestate.turn}: "
+                )
+                try:
+                    inp = int(inp)
+                except ValueError:
+                    print("Input must be an int")
+                    continue
+
+                if not 0 <= inp < 7:
+                    print("Input must be in range 0-6")
+                    continue
+
+                return (inp, gamestate.turn)
+
+        return Agent(get_action=get_action, agent_type=agent_type)
     elif agent_type == "mcts":
         raise NotADirectoryError("mcts agent is not implemented")
     else:
@@ -126,8 +148,8 @@ if __name__ == "__main__":
         type=int,
     )
 
-    parser.add_argument("p1", type=str, choices=["random", "minimax", "mcts"])
-    parser.add_argument("p2", type=str, choices=["random", "minimax", "mcts"])
+    parser.add_argument("p1", type=str, choices=AGENT_TYPES)
+    parser.add_argument("p2", type=str, choices=AGENT_TYPES)
 
     args = vars(parser.parse_args())
     filepath, nofile, seed, p1_agent_type, p2_agent_type = (

@@ -1,7 +1,10 @@
 import typing as t
 
-from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH, other_player, is_over
+from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH, other_player
 import connect4._types as types
+import utils
+
+ALL_COORDS = [(r, c) for r in range(BOARD_HEIGHT) for c in range(BOARD_LENGTH)]
 
 
 def compute_triples():
@@ -70,12 +73,6 @@ def heuristic(gamestate: types.GameState) -> float:
     opponent = other_player(this_player)
     board = gamestate.board
 
-    winner = is_over(gamestate)
-    if winner == this_player:
-        return float("+inf")
-    elif winner == opponent:
-        return float("-inf")
-
     ############################ Count open quads ###########################
     open_quads_this_player = set()
     open_quads_opponent = set()
@@ -132,7 +129,50 @@ def heuristic(gamestate: types.GameState) -> float:
         elif num_nones == 1 and num_this_player == 1 and num_opponent == 3:
             open_trips_opponent.add(singleton)
 
-    # not including open quads in the final count because either you have 1
-    # open quad, in which case opponent must deal with the threat, or you have
-    # 2 in which case you win
-    return len(open_trips_this_player) - len(open_trips_opponent)
+    num_open_trips = len(open_trips_this_player) - len(open_trips_opponent)
+
+    # see https://www.youtube.com/watch?v=YqqcNjQMX18&ab_channel=KeithGalli
+    my_parity = (
+        1
+        if gamestate.turn == "X"
+        else 0
+        if gamestate.turn == "O"
+        else utils.assert_never(f"Unexpected player {gamestate.turn}")
+    )
+    open_quads_on_my_parity = [
+        1 for x in open_quads_this_player if (x[0] % 2) == my_parity
+    ]
+    open_quads_on_opponet_parity = [
+        1 for x in open_quads_this_player if (x[0] % 2) == my_parity
+    ]
+    open_quads_on_my_parity = [
+        (r, c)
+        for (r, c) in open_quads_on_my_parity
+        if not any(
+            (r2, c) not in open_quads_on_opponet_parity
+            for r2 in range(BOARD_HEIGHT - 1, r, -1)
+        )
+    ]
+    open_quads_on_opponet_parity = [
+        (r, c)
+        for (r, c) in open_quads_on_opponet_parity
+        if not any(
+            (r2, c) not in open_quads_on_my_parity
+            for r2 in range(BOARD_HEIGHT - 1, r, -1)
+        )
+    ]
+
+    middle_bias = (
+        sum(
+            (3 - abs(3 - c))
+            for (r, c) in ALL_COORDS
+            if board[r][c] == this_player
+        )
+        / 3.0
+    )
+    return (
+        num_open_trips
+        + middle_bias
+        + len(open_quads_on_my_parity)
+        - len(open_quads_on_opponet_parity)
+    )

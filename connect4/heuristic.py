@@ -98,11 +98,6 @@ def heuristic(gamestate: types.GameState) -> float:
         elif num_nones == 1 and num_this_player == 1 and num_opponent == 3:
             open_quads_opponent.add(singleton)
 
-    if open_quads_this_player:
-        return float("+inf")  # can win this turn
-    elif len(open_quads_opponent) > 1:
-        return float("-inf")  # can't stop opponent from winning
-
     ############################ Count open trips ###########################
     open_trips_this_player = set()
     open_trips_opponent = set()
@@ -140,10 +135,10 @@ def heuristic(gamestate: types.GameState) -> float:
         else utils.assert_never(f"Unexpected player {gamestate.turn}")
     )
     open_quads_on_my_parity = [
-        1 for x in open_quads_this_player if (x[0] % 2) == my_parity
+        x for x in open_quads_this_player if (x[0] % 2) == my_parity
     ]
     open_quads_on_opponet_parity = [
-        1 for x in open_quads_this_player if (x[0] % 2) == my_parity
+        x for x in open_quads_opponent if (x[0] % 2) == my_parity
     ]
     open_quads_on_my_parity = [
         (r, c)
@@ -170,9 +165,18 @@ def heuristic(gamestate: types.GameState) -> float:
         )
         / 3.0
     )
+    num_open_quads_on_my_parity = len(open_quads_on_my_parity)
+    num_open_quads_on_opponent_parity = len(open_quads_on_opponet_parity)
+    remaining_open_quads_this_player = (
+        len(open_quads_this_player) - num_open_quads_on_my_parity
+    )
+    remaining_open_quads_opponent = (
+        len(open_quads_opponent) - num_open_quads_on_opponent_parity
+    )
     return (
         num_open_trips
         + middle_bias
-        + len(open_quads_on_my_parity)
-        - len(open_quads_on_opponet_parity)
+        + 3 * (num_open_quads_on_my_parity - num_open_quads_on_opponent_parity)
+        + 2
+        * (remaining_open_quads_this_player - remaining_open_quads_opponent)
     )

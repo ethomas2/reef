@@ -12,6 +12,7 @@ from connect4.rules import (
     get_random_action,
     undo_action,
     get_all_actions,
+    other_player,
 )
 from connect4.heuristic import heuristic
 from connect4 import fmt
@@ -69,6 +70,7 @@ def play_minimax_vs_minimax(output: t.Optional[t.IO] = None):
             is_over=is_over,
             heuristic=heuristic,
             get_player=lambda gs: gs.turn,
+            other_player=other_player,
         )
         _, action = minimax(config, gamestate)
         if action is None:

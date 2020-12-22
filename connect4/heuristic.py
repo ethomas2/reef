@@ -1,6 +1,6 @@
 import typing as t
 
-from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH, other_player
+from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH, other_player, is_over
 import connect4._types as types
 
 
@@ -70,6 +70,12 @@ def heuristic(gamestate: types.GameState) -> float:
     opponent = other_player(this_player)
     board = gamestate.board
 
+    winner = is_over(gamestate)
+    if winner == this_player:
+        return float("+inf")
+    elif winner == opponent:
+        return float("-inf")
+
     ############################ Count open quads ###########################
     open_quads_this_player = set()
     open_quads_opponent = set()
@@ -78,12 +84,11 @@ def heuristic(gamestate: types.GameState) -> float:
         num_nones = 0
         num_this_player = 0
         num_opponent = 0
-        for tup in quad:
-            r, c = tup
+        for (r, c) in quad:
             val = board[r][c]
             if val is None:
                 num_nones += 1
-                singleton = tup
+                singleton = (r, c)
             elif val == this_player:
                 num_this_player += 1
             elif val == opponent:
@@ -109,17 +114,12 @@ def heuristic(gamestate: types.GameState) -> float:
         num_nones = 0
         num_this_player = 0
         num_opponent = 0
-        for tup in trip:
-            r, c = tup
-            try:
-                val = board[r][c]
-            except:
-                import pdb
+        for (r, c) in trip:
+            val = board[r][c]
 
-                pdb.set_trace()  # noqa: E702
             if val is None:
                 num_nones += 1
-                singleton = tup
+                singleton = (r, c)
             elif val == this_player:
                 num_this_player += 1
             elif val == opponent:

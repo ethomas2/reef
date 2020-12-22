@@ -30,7 +30,7 @@ def take_action_mut(
     )
 
     if next_available_row is None:
-        return None
+        raise Exception(f"cannot take action {action} on current board")
 
     board[next_available_row][col] = mark
     gamestate.num_moves += 1
@@ -121,13 +121,14 @@ def other_player(player: types.Player) -> types.Player:
 def undo_action(gamestate: types.GameState, action: types.Action):
     gamestate.turn = other_player(gamestate.turn)
     gamestate.num_moves -= 1
+    board = gamestate.board
 
     c, _ = action
-    r = next((i for i in range(BOARD_HEIGHT) if i is not None), None)
+    r = next((i for i in range(BOARD_HEIGHT) if board[i][c] is not None), None)
     assert (
         r is not None
     ), "Tried to undo action for a column which does not have a marker in it"
-    gamestate.board[r][c] = None
+    board[r][c] = None
 
 
 def get_all_actions(gamestate: types.GameState) -> t.List[types.Action]:

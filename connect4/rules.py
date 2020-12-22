@@ -44,11 +44,14 @@ def take_action_mut(
     return gamestate
 
 
-def is_over(state: types.GameState) -> bool:
+Draw = t.Literal["draw"]
+
+
+def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player, Draw]]:
 
     # draw
     if state.num_moves == BOARD_LENGTH * BOARD_HEIGHT:
-        return True
+        return "draw"
 
     board = state.board
     for r in range(BOARD_HEIGHT):
@@ -61,14 +64,14 @@ def is_over(state: types.GameState) -> bool:
                 board[r][c] == board[x][y]
                 for (x, y) in [(r, c), (r, c + 1), (r, c + 2), (r, c + 3)]
             ):
-                return True
+                return board[r][c]
 
             # check all down
             if r + 3 < BOARD_HEIGHT and all(
                 board[r][c] == board[x][y]
                 for (x, y) in [(r, c), (r + 1, c), (r + 2, c), (r + 3, c)]
             ):
-                return True
+                return board[r][c]
 
             # check diag down+right
             if (
@@ -84,7 +87,7 @@ def is_over(state: types.GameState) -> bool:
                     ]
                 )
             ):
-                return True
+                return board[r][c]
 
             # check diag down+left
             if (
@@ -100,13 +103,24 @@ def is_over(state: types.GameState) -> bool:
                     ]
                 )
             ):
-                return True
+                return board[r][c]
 
-    return False
+    return None
+
+
+def other_player(player: types.Player) -> types.Player:
+    return (
+        "X"
+        if player == "O"
+        else "O"
+        if player == "X"
+        else utils.assert_never(f"Unexpected player {player}")
+    )
 
 
 def undo_action(gamestate: types.GameState, action: types.Action):
-    gamestate.turn = (gamestate.turn + 1) % 2
+    gamestate.turn = other_player(gamestate.turn)
+    gamestate.num_moves -= 1
 
     c, _ = action
     r = next((i for i in range(BOARD_HEIGHT) if i is not None), None)

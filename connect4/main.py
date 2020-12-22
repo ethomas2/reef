@@ -16,8 +16,8 @@ from connect4.rules import (
 from connect4.heuristic import heuristic
 from connect4 import fmt
 import utils
-import connect4._types as types
-from engine import minimax
+import engine.typesv1 as types
+from engine.minimax import minimax
 
 
 def play_random_computer_vs_random_computer(
@@ -68,8 +68,9 @@ def play_minimax_vs_minimax(output: t.Optional[t.IO] = None):
             get_all_actions=get_all_actions,
             is_over=is_over,
             heuristic=heuristic,
+            get_player=lambda gs: gs.turn,
         )
-        action = minimax(config, gamestate)
+        _, action = minimax(config, gamestate)
         if action is None:
             utils.assert_never(
                 "Minimax action is None even though game is not over"
@@ -87,8 +88,6 @@ def play_minimax_vs_minimax(output: t.Optional[t.IO] = None):
 
 
 if __name__ == "__main__":
-    # file, seed
-
     parser = argparse.ArgumentParser(description="Process some integers.")
     mut_grp = parser.add_mutually_exclusive_group()
     mut_grp.add_argument(
@@ -143,4 +142,9 @@ if __name__ == "__main__":
                 "Argparse allowed file=None even though nofile is not given"
             )
 
-        play_random_computer_vs_random_computer(seed=seed, output=output)
+        if ai_random:
+            play_random_computer_vs_random_computer(seed=seed, output=output)
+        elif ai_minimax:
+            play_minimax_vs_minimax(output)
+        elif ai_mcts:
+            raise NotImplementedError("mcts is not implemented")

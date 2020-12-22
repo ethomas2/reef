@@ -3,9 +3,9 @@ import typing as t
 
 XSpace = t.Literal["X"]
 OSpace = t.Literal["O"]
-Marking = t.Union[XSpace, OSpace]
+Player = t.Union[XSpace, OSpace]
 
-Space = t.Optional[Marking]
+Space = t.Optional[Player]
 
 Board = t.List[t.List[Space]]
 
@@ -14,7 +14,7 @@ Board = t.List[t.List[Space]]
 class GameState:
     board: Board
     num_moves: int
-    turn: Marking
+    turn: Player
 
 
-Action = t.Tuple[int, Marking]
+Action = t.Tuple[int, Player]

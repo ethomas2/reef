@@ -1,6 +1,6 @@
 import typing as t
 
-from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH
+from connect4.rules import BOARD_HEIGHT, BOARD_LENGTH, other_player
 import connect4._types as types
 
 
@@ -19,41 +19,13 @@ def compute_triples():
         [(r, c), (r + 1, c + 1), (r + 2, c + 2)]
         for r in range(BOARD_HEIGHT)
         for c in range(BOARD_LENGTH)
-        if r + 2 < BOARD_LENGTH and c + 2 < BOARD_HEIGHT
+        if r + 2 < BOARD_HEIGHT and c + 2 < BOARD_LENGTH
     ]
     diag_triples2 = [
         [(r, c), (r + 1, c - 1), (r + 2, c - 2)]
         for r in range(BOARD_HEIGHT)
         for c in range(BOARD_LENGTH)
-        if r + 2 < BOARD_LENGTH and c - 2 >= 0
-    ]
-    return (
-        horizontal_triples + vertical_triples + diag_triples1 + diag_triples2
-    )
-
-
-def compute_doubles():
-    horizontal_triples = [
-        [(r, c), (r, c + 1)]
-        for r in range(BOARD_HEIGHT)
-        for c in range(BOARD_LENGTH - 1)
-    ]
-    vertical_triples = [
-        [(r, c), (r + 1, c)]
-        for c in range(BOARD_LENGTH)
-        for r in range(BOARD_HEIGHT - 1)
-    ]
-    diag_triples1 = [
-        [(r, c), (r + 1, c + 1)]
-        for r in range(BOARD_HEIGHT)
-        for c in range(BOARD_LENGTH)
-        if r + 2 < BOARD_LENGTH and c + 2 < BOARD_HEIGHT
-    ]
-    diag_triples2 = [
-        [(r, c), (r + 1, c - 1)]
-        for r in range(BOARD_HEIGHT)
-        for c in range(BOARD_LENGTH)
-        if r + 1 < BOARD_LENGTH and c - 1 >= 0
+        if r + 2 < BOARD_HEIGHT and c - 2 >= 0
     ]
     return (
         horizontal_triples + vertical_triples + diag_triples1 + diag_triples2
@@ -72,23 +44,22 @@ def compute_quads():
         for r in range(BOARD_HEIGHT - 3)
     ]
     diag_triples1 = [
-        [(r, c), (r + 1, c + 1), (r + 2, c + 2), (r + 3), (c + 3)]
+        [(r, c), (r + 1, c + 1), (r + 2, c + 2), (r + 3, c + 3)]
         for r in range(BOARD_HEIGHT)
         for c in range(BOARD_LENGTH)
-        if r + 3 < BOARD_LENGTH and c + 3 < BOARD_HEIGHT
+        if r + 3 < BOARD_HEIGHT and c + 3 < BOARD_LENGTH
     ]
     diag_triples2 = [
         [(r, c), (r + 1, c - 1), (r + 2, c - 2), (r + 3, c - 3)]
         for r in range(BOARD_HEIGHT)
         for c in range(BOARD_LENGTH)
-        if r + 3 < BOARD_LENGTH and c - 3 >= 0
+        if r + 3 < BOARD_HEIGHT and c - 3 >= 0
     ]
     return (
         horizontal_triples + vertical_triples + diag_triples1 + diag_triples2
     )
 
 
-# ALL_DOUBLES = compute_doubles()
 ALL_TRIPLES = compute_triples()
 ALL_QUADS = compute_quads()
 
@@ -96,7 +67,7 @@ ALL_QUADS = compute_quads()
 def heuristic(gamestate: types.GameState) -> float:
 
     this_player = gamestate.turn
-    opponent = (this_player + 1) % 2
+    opponent = other_player(this_player)
     board = gamestate.board
 
     ############################ Count open quads ###########################
@@ -140,7 +111,12 @@ def heuristic(gamestate: types.GameState) -> float:
         num_opponent = 0
         for tup in trip:
             r, c = tup
-            val = board[r][c]
+            try:
+                val = board[r][c]
+            except:
+                import pdb
+
+                pdb.set_trace()  # noqa: E702
             if val is None:
                 num_nones += 1
                 singleton = tup

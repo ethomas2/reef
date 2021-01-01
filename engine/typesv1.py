@@ -7,24 +7,30 @@ G = t.TypeVar("G")  # Gamestate
 A = t.TypeVar("A")  # Action
 P = t.TypeVar("P")  # Player
 
+NodeId = int
+
 
 @dataclass
 class Node(t.Generic[A]):
-    id: int
-    # The parent id and action it took to get from parent to here
-    parent: t.Optional[t.Tuple[int, A]]
+    id: NodeId
     times_visited: int
-    times_won: int
+    value: float  # times_won
+    parent_id: t.Optional[NodeId]
 
-    # None for non-terminal, -1, 0, 1 for
-    terminal: t.Optional[int]
+    num_expanded: int
+    num_could_be_expanded: int
 
 
 @dataclass
 class Tree(t.Generic[G, A]):
-    nodes: t.List[Node[A]]
-    edges: t.Dict[int, t.List[int]]
-    node_id_to_gamestate: t.Dict[int, G]
+    nodes: t.Dict[NodeId, Node[A]]  # node id -> node
+    # parent node id -> (child node id, action it took to get to this child)
+    edges: t.Dict[
+        NodeId, t.List[t.Tuple[NodeId, A]]
+    ]  # TODO: action could go in node.parent instead of the tree?
+    # node_id_to_gamestate: t.Dict[
+    #     NodeId, G
+    # ]  # TODO: maybe sholdn't be part of tree
 
 
 @dataclass

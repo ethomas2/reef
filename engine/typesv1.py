@@ -10,15 +10,26 @@ P = t.TypeVar("P")  # Player
 NodeId = int
 
 
+# A node is not 1:1 with gamestate. A node is a series of actions from the
+# root. So two nodes can have the same gamestates if the sequence of actions to
+# the two nodes lead to the same gamestate
 @dataclass
 class Node(t.Generic[A]):
     id: NodeId
-    times_visited: int
-    value: float  # times_won
     parent_id: t.Optional[NodeId]
 
-    num_expanded: int
-    num_could_be_expanded: int
+    times_visited: int
+    value: float  # times_won
+
+    num_children_visited: int
+    num_children: int
+
+    # @property
+    # def is_expanded(self) -> bool:
+    #     return self.num_expanded > 0
+
+    # def is_fully_expanded(self) -> bool:
+    #     return self.num_expanded == self.num_children
 
 
 @dataclass

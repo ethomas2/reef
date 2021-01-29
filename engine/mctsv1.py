@@ -4,7 +4,6 @@ import math
 import time
 import typing as t
 
-import utils
 import _typesv1 as types
 
 G = t.TypeVar("G")
@@ -27,7 +26,7 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
         leaf_node = tree_policy(config, root, tree, gamestate)
         new_node = expand(config, tree, leaf_node, gamestate)
         result = rollout_policy(config, new_node, tree, gamestate)
-        backup(new_node, result)
+        backup(config, tree, new_node, result)
 
     child_action_pairs = (
         (tree.nodes[child_id], action)
@@ -47,24 +46,40 @@ def tree_policy(
     root: types.Node[A],
     tree: types.Tree[G, A],
     gamestate: G,
-) -> types.Node[A]:
+) -> (types.Node[A], bool):
     nodes, edges = tree.nodes, tree.edges
 
     node = root
+    # assert edges.get(node.id) is not None
     while True:
-        is_fully_expanded = node.num_children_visited == node.num_children
-        if not is_fully_expanded:
-            break
+        is_not_expanded = edges.get(node.id) is None
+        if is_not_expanded:
+            return node
+
         child_nodes = [nodes[child_id] for (child_id, _) in edges[node.id]]
-        node = max(child_nodes, key=lambda node: ucb(tree, node))
+        is_fully_expanded = all(
+            child.times_visited > 0 for child in child_nodes
+        )
+        is_terminal = child_nodes == []
+        if not is_fully_expanded or is_terminal:
+            break
+        node = max(child_nodes, key=lambda node: ucb(config, tree, node))
+    assert _is_leaf(node)
     return node
 
 
-def ucb(tree: types.Tree, node: types.Node) -> float:
+def _is_leaf(node):
+    """
+    Return if this node has a child that
+    """
+    return False
+
+
+def ucb(config: types.MctsConfig, tree: types.Tree, node: types.Node) -> float:
     xj = node.value / node.times_visited
     parent = tree.nodes[node.parent_id]
-    explore_term = math.sqrt(
-        2 * math.log(node.times_visited) / float(parent.times_visited)
+    explore_term = config.C * math.sqrt(
+        math.log(node.times_visited) / float(parent.times_visited)
     )
     return xj + explore_term
 
@@ -85,15 +100,10 @@ def expand(
     Fully expanded: A node for whom all children have had a simulation run
     """
     nodes, edges = tree.nodes, tree.edges
-    take_action_mut, undo_action, get_all_actions = (
-        config.take_action_mut,
-        config.undo_action,
-        config.get_all_actions,
-    )
 
     child_action_pairs = edges.get(node.id)
     if not child_action_pairs:
-        add_children_to_tree(node, tree, gamestate)
+        add_children_to_tree(config, tree, node, gamestate)
 
     child_nodes = (nodes[child_id] for (child_id, _) in edges[node.id])
     unvisited_children = [
@@ -114,24 +124,18 @@ def add_children_to_tree(
     the tree yet.
     """
 
-    get_all_actions = config.get_all_actions
-
-    actions = get_all_actions(gamestate)
-    child_nodes = [
-        types.Node(
-            id=next_node_id(),
+    assert tree.edges.get(node.id) is None or tree.edges[node.id] == []
+    tree.edges[node.id] = []
+    for action in config.get_all_actions(gamestate):
+        child_node = types.Node(
+            id=random.getrandbits(64),
             parent_id=node.id,
             times_visited=0,
             value=0,
             num_children_visited=0,
             num_children=None,
         )
-        for _ in len(actions)
-    ]
 
-    assert tree.edges.get(node.id) is None or tree.edges[node.id] == []
-    tree.edges[node.id] = []
-    for child_node, action in zip(child_nodes, actions):
         tree.nodes[child_node.id] = child_node
         tree.edges[node.id].append((child_node, action))
 
@@ -152,11 +156,14 @@ def rollout_policy(
 
 
 def backup(
-    config: types.MctsConfig, tree: types.Tree[G, A], node: Node, result: float
+    config: types.MctsConfig,
+    tree: types.Tree[G, A],
+    node: types.Node,
+    result: float,
 ):
     while node is not None:
-        terminal_node.times_visited += 1
-        terminal_node.value += result
+        node.times_visited += 1
+        node.value += result
         node = tree.get(node.parent_id)
 
 

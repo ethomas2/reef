@@ -48,7 +48,9 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
         if output:
             print(fmt.format_gamestate(gamestate), file=output)
             print("\n", file=output)
-        if is_over(gamestate) is not None:
+        if (winner := is_over(gamestate)) is not None:
+            if output:
+                print(f"Game Over. Winner {winner}", file=output)
             break
 
         if agent.agent_type == "human":
@@ -67,9 +69,6 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
                 utils.assert_never(
                     f"Non human agent returned an invalid action {action}"
                 )
-
-    if output:
-        print("Game Over", file=output)
 
 
 def get_agent(agent_type: AgentType) -> Agent:

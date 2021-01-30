@@ -21,26 +21,14 @@ class Node(t.Generic[A]):
     times_visited: int
     value: float  # times_won
 
-    # @property
-    # def is_expanded(self) -> bool:
-    #     return self.num_expanded > 0
-
-    # def is_fully_expanded(self) -> bool:
-    #     return self.num_expanded == self.num_children
-
 
 @dataclass
 class Tree(t.Generic[G, A]):
     nodes: t.Dict[NodeId, Node[A]]  # node id -> node
 
-    # parent node id -> (child node id, action it took to get to this child)
-    # edges.get(node_id) == None if has not yet been expanded, otherwise includes all the children
     edges: t.Dict[
         NodeId, t.List[t.Tuple[NodeId, A]]
     ]  # TODO: action could go in node.parent instead of the tree?
-    # node_id_to_gamestate: t.Dict[
-    #     NodeId, G
-    # ]  # TODO: maybe sholdn't be part of tree
 
 
 @dataclass

@@ -3,12 +3,15 @@ import random
 import math
 import time
 import typing as t
+import copy
 
 import engine.typesv1 as types
 
 
 G = t.TypeVar("G")
 A = t.TypeVar("A")
+
+MAX_STEPS = 10000
 
 
 def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
@@ -20,9 +23,10 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
         times_visited=0,
         value=0,
     )
-    tree = types.Tree(nodes={}, edges={})
+    tree = types.Tree(nodes={root.id: root}, edges={})
 
     while time.time() < end:
+        gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
                 config, root, tree, take_action_mut, gamestate
@@ -31,7 +35,9 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
                 config, leaf_node, tree, take_action_mut, gamestate
             )
             backup(config, tree, leaf_node, result)
+            assert gamestate != gamestate_copy
             undo_actions(gamestate, config.undo_action, log)
+        assert gamestate == gamestate_copy
 
     child_action_pairs = (
         (tree.nodes[child_id], action)
@@ -43,6 +49,15 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
     ]
 
     action, _ = max(action_value_pairs, key=lambda x: x[1])
+
+    # import pprint
+
+    # pprint.pprint(
+    #     [
+    #         (node.id, node.times_visited, node.value)
+    #         for node in tree.nodes.values()
+    #     ]
+    # )
     return action
 
 
@@ -56,31 +71,43 @@ def tree_policy(
     nodes, edges = tree.nodes, tree.edges
 
     node = root
-    while True:
+    for _ in range(MAX_STEPS):
+        # If node hasn't been expanded, expand it
         children = edges.get(node.id)
         if children is None:
-            return expand(config, tree, node, gamestate)
+            expand(config, tree, node, gamestate)
+            child_id_action_pairs = edges.get(node.id)
+            assert child_id_action_pairs is not None
+            child_nodes = [
+                nodes[child_id] for (child_id, _) in child_id_action_pairs
+            ]
+            if len(child_nodes) == 0:
+                return node
+            return random.choice(child_nodes)
 
+        # if this is a terminal node, return it
         if children == []:
             return node
 
-        unvisited_child = random.choice(
-            [
-                nodes[child_id]
-                for (child_id, _) in children
-                if nodes[child_id].times_visited == 0
-            ]
-        )
+        # if node has an unvisited child, return the unvisited child
+        unvisited_children = [
+            nodes[child_id]
+            for (child_id, _) in children
+            if nodes[child_id].times_visited == 0
+        ]
+        if len(unvisited_children) > 0:
+            return random.choice(unvisited_children)
 
-        if unvisited_child is not None:
-            return unvisited_child
-
-        child, action = max(
+        # otherwise walk down the tree via ucb
+        child_id, action = max(
             children,
             key=lambda child_id_action: ucb(
                 config, tree, nodes[child_id_action[0]]
             ),
         )
+        gamestate = take_action_mut(gamestate, action)
+        node = nodes.get(child_id)
+    raise Exception(f"tree_policy exceeded {MAX_STEPS} steps")
 
 
 def ucb(config: types.MctsConfig, tree: types.Tree, node: types.Node) -> float:
@@ -105,16 +132,10 @@ def expand(
     if not child_action_pairs:
         add_children_to_tree(config, tree, node, gamestate)
 
-    if type(node.id) != type(1):
-        import pdb
-
-        pdb.set_trace()  # noqa: E702
-    child_nodes = (nodes[child_id] for (child_id, _) in edges[node.id])
-    unvisited_children = [
-        node for node in child_nodes if node.times_visited == 0
-    ]
-    arbitrary_unvisited_child = random.choice(unvisited_children)
-    return arbitrary_unvisited_child
+    child_nodes = [nodes[child_id] for (child_id, _) in edges[node.id]]
+    assert all(
+        child.times_visited == 0 for child in child_nodes
+    ), "Expanded node and got unvisted children"
 
 
 def add_children_to_tree(
@@ -152,11 +173,16 @@ def simulate(
 ) -> int:
     # TODO: add decisive move heuristic
     # TODO: use heuristic
+    turn = gamestate.turn
+    c = 0
     while (result := config.is_over(gamestate)) is None:
+        if c >= MAX_STEPS:
+            raise Exception(f"Simulate exceeded {MAX_STEPS} steps")
         action = random.choice(config.get_all_actions(gamestate))
         take_action_mut(gamestate, action)
-    assert type(result) == type(gamestate.turn)
-    return int(result == gamestate.turn)
+        c += 1
+    assert type(result) == type(turn)
+    return int(result == turn)
 
 
 def backup(
@@ -168,7 +194,7 @@ def backup(
     while node is not None:
         node.times_visited += 1
         node.value += result
-        node = tree.get(node.parent_id)
+        node = tree.nodes.get(node.parent_id)
 
 
 @contextlib.contextmanager

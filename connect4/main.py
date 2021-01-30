@@ -20,6 +20,7 @@ from connect4.heuristic import heuristic
 from connect4 import fmt
 import utils
 import engine.typesv1 as types
+from engine.mctsv1 import mcts_v1
 import connect4._types as c4types
 from engine.minimax import minimax
 
@@ -128,7 +129,18 @@ def get_agent(agent_type: AgentType) -> Agent:
 
         return Agent(get_action=get_action, agent_type=agent_type)
     elif agent_type == "mcts":
-        raise NotADirectoryError("mcts agent is not implemented")
+        config = types.MctsConfig(
+            take_action_mut=take_action_mut,
+            undo_action=undo_action,
+            get_all_actions=get_all_actions,
+            is_over=is_over,
+        )
+
+        def get_action(gamestate: c4types.GameState) -> c4types.Action:
+            return mcts_v1(config, gamestate)
+
+        return Agent(get_action=get_action, agent_type=agent_type)
+
     else:
         utils.assert_never(f"Invalid agent type {agent_type}")
 

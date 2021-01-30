@@ -56,8 +56,8 @@ class ImmutableActionConfig(t.Generic[G, A]):
 
 @dataclass
 class MctsConfig(t.Generic[G, A]):
-    gamestate: G
-    action: t.Union[MutableActionConfig[G, A], ImmutableActionConfig[G, A]]
+    take_action_mut: t.Callable[[G, A], t.Optional[G]]
+    undo_action: t.Callable[[G, A], t.Optional[G]]
     get_all_actions: t.Callable[[G], t.Iterable[A]]
     is_over: t.Callable[[G], t.Optional[int]]
 

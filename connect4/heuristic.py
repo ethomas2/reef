@@ -69,7 +69,7 @@ ALL_QUADS = compute_quads()
 
 def heuristic(gamestate: types.GameState) -> float:
 
-    this_player = gamestate.turn
+    this_player = gamestate.player
     opponent = other_player(this_player)
     board = gamestate.board
 
@@ -129,10 +129,10 @@ def heuristic(gamestate: types.GameState) -> float:
     # see https://www.youtube.com/watch?v=YqqcNjQMX18&ab_channel=KeithGalli
     my_parity = (
         1
-        if gamestate.turn == "X"
+        if gamestate.player == "X"
         else 0
-        if gamestate.turn == "O"
-        else utils.assert_never(f"Unexpected player {gamestate.turn}")
+        if gamestate.player == "O"
+        else utils.assert_never(f"Unexpected player {gamestate.player}")
     )
     open_quads_on_my_parity = [
         x for x in open_quads_this_player if (x[0] % 2) == my_parity

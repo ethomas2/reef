@@ -29,7 +29,7 @@ def play_human_vs_human():
             break
 
         while True:
-            action = get_action(gamestate.turn, gamestate)
+            action = get_action(gamestate.player, gamestate)
             newgamestate = take_action(gamestate, action)
             if newgamestate is None:
                 print("Invalid Action")
@@ -61,7 +61,7 @@ def play_random_computer_vs_random_computer(
         if random_action is None:
             if output:
                 print(
-                    f"NO ACTIONS for player {gamestate.turn}. SKIPPING",
+                    f"NO ACTIONS for player {gamestate.player}. SKIPPING",
                     file=output,
                 )
             n_turns_skipped_in_a_row += 1

@@ -218,7 +218,7 @@ Center = t.List[t.Tuple[Card, int]]
 @dataclass
 class GameState:
     players: t.List[PlayerState]
-    turn: int
+    player: int
     history: History
     center: Center
     deck: t.List[Card]

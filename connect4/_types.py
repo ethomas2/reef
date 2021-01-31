@@ -14,7 +14,7 @@ Board = t.List[t.List[Space]]
 class GameState:
     board: Board
     num_moves: int
-    turn: Player
+    player: Player
 
 
 Action = t.Tuple[int, Player]

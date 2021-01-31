@@ -50,7 +50,7 @@ def foo():
     )
     gamestate = c4types.GameState(
         board=board,
-        turn="X",
+        player="X",
         num_moves=18,
     )
 
@@ -69,7 +69,7 @@ board = [[(x if x != "-" else None) for x in row] for row in board]
 
 gamestate = c4types.GameState(
     board=board,
-    turn="X",
+    player="X",
     num_moves=50,
 )
 print(is_over(gamestate))

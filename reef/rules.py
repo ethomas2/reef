@@ -29,7 +29,7 @@ def init_game(nplayers: int) -> types.GameState:
     ]
     gamestate = types.GameState(
         players=players,
-        turn=0,
+        player=0,
         history=[],
         center=[
             (deck.pop(), 0),
@@ -76,7 +76,7 @@ def get_all_actions(
     not be called in simulations
     """
 
-    player_idx = gamestate.turn
+    player_idx = gamestate.player
     player = gamestate.players[player_idx]
 
     draw_center_actions: t.List[types.Action] = (
@@ -113,7 +113,7 @@ def get_all_actions(
 
 def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
 
-    player_idx = gamestate.turn
+    player_idx = gamestate.player
     player = gamestate.players[player_idx]
 
     # can you do a draw card action
@@ -202,7 +202,7 @@ def is_valid_action(gamestate: types.GameState, action: types.Action) -> bool:
     """
 
     if isinstance(action, types.DrawCenterCardAction):
-        player = gamestate.players[gamestate.turn]
+        player = gamestate.players[gamestate.player]
         if len(gamestate.center) == 0:
             return False
         if len(player.hand) >= MAX_HAND_SIZE:
@@ -210,7 +210,7 @@ def is_valid_action(gamestate: types.GameState, action: types.Action) -> bool:
         if action.center_index >= len(gamestate.center):
             return False
     elif isinstance(action, types.PlayCardAction):
-        player = gamestate.players[gamestate.turn]
+        player = gamestate.players[gamestate.player]
         board = player.board
         x1, y1 = action.placement1
         x2, y2 = action.placement2
@@ -240,7 +240,7 @@ def is_valid_action(gamestate: types.GameState, action: types.Action) -> bool:
         if not color_piles_are_non_negative:
             return False
     elif isinstance(action, types.DrawDeckAction):
-        player = gamestate.players[gamestate.turn]
+        player = gamestate.players[gamestate.player]
         if len(gamestate.deck) == 0:
             return False
         if len(player.hand) >= MAX_HAND_SIZE:
@@ -300,7 +300,7 @@ def take_action(
 def take_action_mut(
     state: types.GameState, action: types.Action
 ) -> t.Optional[types.GameState]:
-    player = state.players[state.turn]
+    player = state.players[state.player]
     if isinstance(action, types.DrawCenterCardAction):
         if action.center_index >= len(state.center):
             return None
@@ -361,7 +361,7 @@ def take_action_mut(
     else:
         utils.assert_never(f"unknown action type {type(action)}")
 
-    state.turn = (state.turn + 1) % len(state.players)
+    state.player = (state.player + 1) % len(state.players)
 
     if not _is_gamestate_valid(state):
         return None
@@ -371,5 +371,5 @@ def take_action_mut(
 def is_over(gamestate: types.GameState) -> bool:
     return len(gamestate.deck) == 0 or (
         any(pile == 0 for pile in gamestate.color_piles.values())
-        and gamestate.turn == 0
+        and gamestate.player == 0
     )

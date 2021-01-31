@@ -13,7 +13,7 @@ def init_game() -> types.GameState:
     return types.GameState(
         board=[[None] * BOARD_LENGTH for _ in range(BOARD_HEIGHT)],
         num_moves=0,
-        turn="X",
+        player="X",
     )
 
 
@@ -34,12 +34,12 @@ def take_action_mut(
 
     board[next_available_row][col] = mark
     gamestate.num_moves += 1
-    gamestate.turn = (
+    gamestate.player = (
         "X"
-        if gamestate.turn == "O"
+        if gamestate.player == "O"
         else "O"
-        if gamestate.turn == "X"
-        else utils.assert_never(f"Unknown board turn {gamestate.turn}")
+        if gamestate.player == "X"
+        else utils.assert_never(f"Unknown board player {gamestate.player}")
     )
     return gamestate
 
@@ -119,7 +119,7 @@ def other_player(player: types.Player) -> types.Player:
 
 
 def undo_action(gamestate: types.GameState, action: types.Action):
-    gamestate.turn = other_player(gamestate.turn)
+    gamestate.player = other_player(gamestate.player)
     gamestate.num_moves -= 1
     board = gamestate.board
 
@@ -132,9 +132,9 @@ def undo_action(gamestate: types.GameState, action: types.Action):
 
 
 def get_all_actions(gamestate: types.GameState) -> t.List[types.Action]:
-    turn = gamestate.turn
+    player = gamestate.player
     board = gamestate.board
-    actions = [(i, turn) for i in range(BOARD_LENGTH) if board[0][i] is None]
+    actions = [(i, player) for i in range(BOARD_LENGTH) if board[0][i] is None]
     return actions
 
 

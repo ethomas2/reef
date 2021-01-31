@@ -78,7 +78,7 @@ def gamestate_strategy(draw):
             color_piles=color_piles,
             # players hardcoded to 2
             players=st.lists(player_strategy(), min_size=2, max_size=2),
-            turn=st.integers(min_value=0, max_value=1),
+            player=st.integers(min_value=0, max_value=1),
         )
     )
 

@@ -10,7 +10,7 @@ def score_play_action(
     action: types.PlayCardAction,
     card_played: types.Card,
 ) -> int:
-    player_idx = (resulting_state.turn - 1) % len(resulting_state.players)
+    player_idx = (resulting_state.player - 1) % len(resulting_state.players)
     if isinstance(card_played.card_face, types.HighestSurround):
         return score_highest_surround(
             resulting_state,

@@ -8,7 +8,7 @@ def format_gamestate(gamestate: types.GameState) -> str:
     board = gamestate.board
 
     buffer = io.StringIO()
-    print(f"Turn: {gamestate.turn}\tnum_moves: {gamestate.num_moves}")
+    print(f"Player: {gamestate.player}\tnum_moves: {gamestate.num_moves}")
     for row in board:
         for x in row:
             ch = (

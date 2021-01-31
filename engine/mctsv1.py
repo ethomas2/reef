@@ -99,7 +99,7 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
         parent_id=-1,
         times_visited=0,
         wins_vec={p: 0 for p in config.players},
-        player=gamestate.turn,
+        player=gamestate.player,
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
@@ -107,7 +107,7 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
     logger.add_root(root.id, gamestate)
 
     gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
-    player = gamestate.turn
+    player = gamestate.player
     while time.time() < end:
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
@@ -190,7 +190,7 @@ def tree_policy(
                 config,
                 tree,
                 nodes[child_id_action[0]],
-                gamestate.turn,
+                gamestate.player,
             ),
         )
         logger.ucb_choice(node.id, child_id, action)
@@ -225,7 +225,7 @@ def expand(
     if config.is_over(gamestate) is not None:
         return
 
-    player_idx = config.players.index(gamestate.turn)
+    player_idx = config.players.index(gamestate.player)
     for action in config.get_all_actions(gamestate):
         child_node = types.Node(
             id=int(random.getrandbits(64)),

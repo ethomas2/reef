@@ -95,7 +95,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             get_all_actions=get_all_actions,
             is_over=is_over,
             heuristic=heuristic,
-            get_player=lambda gs: gs.turn,
+            get_player=lambda gs: gs.player,
             other_player=other_player,
         )
 
@@ -112,7 +112,7 @@ def get_agent(agent_type: AgentType) -> Agent:
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
             while True:
                 inp = input(
-                    f"Choose column (0-6) for player {gamestate.turn}: "
+                    f"Choose column (0-6) for player {gamestate.player}: "
                 )
                 try:
                     inp = int(inp)
@@ -124,7 +124,7 @@ def get_agent(agent_type: AgentType) -> Agent:
                     print("Input must be in range 0-6")
                     continue
 
-                return (inp, gamestate.turn)
+                return (inp, gamestate.player)
 
         return Agent(get_action=get_action, agent_type=agent_type)
     elif agent_type == "mcts":

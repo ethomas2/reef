@@ -13,6 +13,7 @@ import engine.typesv1 as types
 
 G = t.TypeVar("G")
 A = t.TypeVar("A")
+P = t.TypeVar("P")  # player
 
 MAX_STEPS = 10000
 
@@ -48,22 +49,32 @@ class MctsLogger:
 
     def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
         self.this_run.append(
-            ["ucb choice", parent_node_id, child_node_id, action]
+            {
+                "type": "ucb choice",
+                "parent_id": parent_node_id,
+                "child_id": child_node_id,
+                "action": action,
+            }
         )
 
     def result(self, node_id: int, result: float):
-        self.this_run.append(["result", node_id, result])
-
-    def new_node(self, node_id: int, parent_id: int):
-        self.this_run.append("new node", node_id, parent_id)
-
-    def full_tree(self, tree: types.Tree[G, A]):
-        self.data["final_tree"] = tree
+        self.this_run.append(
+            {"type": "result", "node_id": node_id, "result": result}
+        )
 
     def expand(
         self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
     ):
-        self.this_run.append(["expand", parent_id, children])
+        self.this_run.append(
+            {
+                "type": "expand",
+                "parent_id": parent_id,
+                "child_id_action_pairs": children,
+            }
+        )
+
+    def full_tree(self, tree: types.Tree[G, A]):
+        self.data["final_tree"] = tree
 
     def flush(self, filepath=None):
         with contextlib.ExitStack() as stack:
@@ -94,21 +105,28 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
     logger.add_root(root.id, gamestate)
 
     gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
+    player = gamestate.turn
     while time.time() < end:
-        logger.new_run()
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
                 config, logger, root, tree, take_action_mut, gamestate
             )
             leaf_id = leaf_node.id
             result = simulate(
-                config, logger, leaf_node, tree, take_action_mut, gamestate
+                config,
+                logger,
+                leaf_node,
+                tree,
+                take_action_mut,
+                gamestate,
+                player,
             )
             logger.result(leaf_id, result)
             backup(config, logger, tree, leaf_node, result)
             assert gamestate != gamestate_copy
             undo_actions(gamestate, config.undo_action, log)
         assert gamestate == gamestate_copy
+        logger.new_run()
     logger.full_tree(tree)
     logger.flush("scrap/mcts-run")
 
@@ -181,7 +199,7 @@ def ucb(config: types.MctsConfig, tree: types.Tree, node: types.Node) -> float:
     xj = node.value / node.times_visited
     parent = tree.nodes[node.parent_id]
     explore_term = config.C * math.sqrt(
-        math.log(node.times_visited) / float(parent.times_visited)
+        math.log(parent.times_visited) / float(node.times_visited)
     )
     return xj + explore_term
 
@@ -197,6 +215,10 @@ def expand(
 
     assert edges.get(node.id) is None
     tree.edges[node.id] = []
+
+    if config.is_over(gamestate) is not None:
+        return
+
     for action in config.get_all_actions(gamestate):
         child_node = types.Node(
             id=int(random.getrandbits(64)),
@@ -218,10 +240,10 @@ def simulate(
     tree: t.Dict[int, t.List[types.Node[A]]],
     take_action_mut: t.Callable[[G, A], t.Optional[G]],
     gamestate: G,
+    current_player: P,
 ) -> int:
     # TODO: add decisive move heuristic
     # TODO: use heuristic
-    turn = gamestate.turn
     c = 0
     while (result := config.is_over(gamestate)) is None:
         if c >= MAX_STEPS:
@@ -229,8 +251,8 @@ def simulate(
         action = random.choice(config.get_all_actions(gamestate))
         take_action_mut(gamestate, action)
         c += 1
-    assert type(result) == type(turn)
-    return int(result == turn)
+    assert type(result) == type(current_player)
+    return int(result == current_player)
 
 
 def backup(

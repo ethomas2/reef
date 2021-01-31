@@ -134,6 +134,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             get_all_actions=get_all_actions,
             is_over=is_over,
             players=["X", "O"],
+            budget=2,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:

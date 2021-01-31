@@ -19,7 +19,11 @@ class Node(t.Generic[A]):
     parent_id: t.Optional[NodeId]
 
     times_visited: int
-    value: float  # times_won
+    wins_vec: t.Dict[
+        P, int
+    ]  # map from player to how many times this player has won
+
+    player: P  # whose turn it is to move
 
 
 @dataclass
@@ -48,6 +52,7 @@ class MctsConfig(t.Generic[G, A]):
     undo_action: t.Callable[[G, A], t.Optional[G]]
     get_all_actions: t.Callable[[G], t.Iterable[A]]
     is_over: t.Callable[[G], t.Optional[int]]
+    players: t.List[P]
 
     heuristic: t.Optional[t.Callable[[G], float]] = None
     C = 1 / math.sqrt(2)

@@ -16,6 +16,7 @@ A = t.TypeVar("A")
 P = t.TypeVar("P")  # player
 
 MAX_STEPS = 10000
+LOGFILE = "scrap/mcts-run"
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -97,7 +98,8 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
         id=0,
         parent_id=-1,
         times_visited=0,
-        value=0,
+        wins_vec={p: 0 for p in config.players},
+        player=gamestate.turn,
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
@@ -112,30 +114,29 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
                 config, logger, root, tree, take_action_mut, gamestate
             )
             leaf_id = leaf_node.id
-            result = simulate(
+            winning_player = simulate(
                 config,
                 logger,
                 leaf_node,
                 tree,
                 take_action_mut,
                 gamestate,
-                player,
             )
-            logger.result(leaf_id, result)
-            backup(config, logger, tree, leaf_node, result)
+            logger.result(leaf_id, winning_player)
+            backup(config, logger, tree, leaf_node, winning_player)
             assert gamestate != gamestate_copy
             undo_actions(gamestate, config.undo_action, log)
         assert gamestate == gamestate_copy
         logger.new_run()
     logger.full_tree(tree)
-    logger.flush("scrap/mcts-run")
+    logger.flush(LOGFILE)
 
     child_action_pairs = (
         (tree.nodes[child_id], action)
         for (child_id, action) in tree.edges[root.id]
     )
     action_value_pairs = [
-        (action, child.value / float(child.times_visited))
+        (action, child.wins_vec[player] / float(child.times_visited))
         for (child, action) in child_action_pairs
     ]
 
@@ -186,7 +187,10 @@ def tree_policy(
         child_id, action = max(
             children,
             key=lambda child_id_action: ucb(
-                config, tree, nodes[child_id_action[0]]
+                config,
+                tree,
+                nodes[child_id_action[0]],
+                gamestate.turn,
             ),
         )
         logger.ucb_choice(node.id, child_id, action)
@@ -195,8 +199,10 @@ def tree_policy(
     raise Exception(f"tree_policy exceeded {MAX_STEPS} steps")
 
 
-def ucb(config: types.MctsConfig, tree: types.Tree, node: types.Node) -> float:
-    xj = node.value / node.times_visited
+def ucb(
+    config: types.MctsConfig, tree: types.Tree, node: types.Node, player: P
+) -> float:
+    xj = node.wins_vec[player] / node.times_visited
     parent = tree.nodes[node.parent_id]
     explore_term = config.C * math.sqrt(
         math.log(parent.times_visited) / float(node.times_visited)
@@ -219,12 +225,18 @@ def expand(
     if config.is_over(gamestate) is not None:
         return
 
+    player_idx = config.players.index(gamestate.turn)
     for action in config.get_all_actions(gamestate):
         child_node = types.Node(
             id=int(random.getrandbits(64)),
             parent_id=node.id,
             times_visited=0,
-            value=0,
+            wins_vec={p: 0 for p in config.players},
+            # TODO: making the assumption here that it's always the next person
+            # in the list's turn. Instead we should take the action, see whose
+            # turn it ends up being, and undo it immediately afterwards. Or
+            # return the player whose turn it is in get_all_actions
+            player=config.players[(player_idx + 1) % len(config.players)],
         )
 
         nodes[child_node.id] = child_node
@@ -240,8 +252,7 @@ def simulate(
     tree: t.Dict[int, t.List[types.Node[A]]],
     take_action_mut: t.Callable[[G, A], t.Optional[G]],
     gamestate: G,
-    current_player: P,
-) -> int:
+) -> P:
     # TODO: add decisive move heuristic
     # TODO: use heuristic
     c = 0
@@ -251,8 +262,7 @@ def simulate(
         action = random.choice(config.get_all_actions(gamestate))
         take_action_mut(gamestate, action)
         c += 1
-    assert type(result) == type(current_player)
-    return int(result == current_player)
+    return result
 
 
 def backup(
@@ -260,11 +270,13 @@ def backup(
     logger: MctsLogger,
     tree: types.Tree[G, A],
     node: types.Node,
-    result: float,
+    winning_player: P,
 ):
     while node is not None:
         node.times_visited += 1
-        node.value += result
+        # winning_player could be "draw". Should includ that in the type
+        if winning_player in node.wins_vec:
+            node.wins_vec[winning_player] += 1
         node = tree.nodes.get(node.parent_id)
 
 

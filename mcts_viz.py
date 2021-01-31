@@ -12,7 +12,7 @@ from connect4.rules import (
 )
 
 # win on col 2 for X. It's X's turn
-board = [
+board1 = [
     ["-", "-", "-", "-", "-", "-", "-"],
     ["-", "-", "-", "-", "-", "-", "-"],
     ["-", "-", "-", "X", "-", "-", "-"],
@@ -20,6 +20,18 @@ board = [
     ["O", "X", "O", "X", "O", "O", "O"],
     ["X", "O", "X", "X", "O", "O", "X"],
 ]
+
+# must block on 1
+board2 = [
+    ["-", "-", "-", "-", "-", "-", "-"],
+    ["-", "-", "-", "-", "-", "-", "-"],
+    ["-", "-", "-", "O", "-", "-", "-"],
+    ["-", "-", "O", "X", "-", "-", "-"],
+    ["-", "-", "X", "O", "-", "-", "-"],
+    ["O", "X", "X", "X", "O", "-", "-"],
+]
+
+board = board1
 
 board = [[(x if x != "-" else None) for x in row] for row in board]
 
@@ -32,6 +44,7 @@ config = eng_types.MctsConfig(
     undo_action=undo_action,
     get_all_actions=get_all_actions,
     is_over=is_over,
+    players=["X", "O"],
 )
 gamestate = c4types.GameState(
     board=board,

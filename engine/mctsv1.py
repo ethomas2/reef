@@ -1,9 +1,12 @@
 import contextlib
-import random
+import copy
+import dataclasses
+import json
 import math
+import random
+import sys
 import time
 import typing as t
-import copy
 
 import engine.typesv1 as types
 
@@ -12,6 +15,68 @@ G = t.TypeVar("G")
 A = t.TypeVar("A")
 
 MAX_STEPS = 10000
+
+
+class DataclassEncoder(json.JSONEncoder):
+    def default(self, o):
+        if dataclasses.is_dataclass(o):
+            return o.__dict__
+        return o
+
+
+class MctsLogger:
+    """
+    Auxilary logging only. Action logging is done by a differnet thing since
+    that's necessary for correctness
+    """
+
+    def __init__(self):
+        self.this_run = []
+        self.data = {
+            "runs": [self.this_run],
+        }
+
+    def add_root(self, root_id: int, gamestate: G):
+        assert (
+            "root" not in self.data
+        ), "add_root should only be called once per logger"
+        self.data["root"] = {"root_id": root_id, "gamestate": gamestate}
+
+    def new_run(self):
+        self.this_run = []
+        self.data["runs"].append(self.this_run)
+
+    def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
+        self.this_run.append(
+            ["ucb choice", parent_node_id, child_node_id, action]
+        )
+
+    def result(self, node_id: int, result: float):
+        self.this_run.append(["result", node_id, result])
+
+    def new_node(self, node_id: int, parent_id: int):
+        self.this_run.append("new node", node_id, parent_id)
+
+    def full_tree(self, tree: types.Tree[G, A]):
+        self.data["final_tree"] = tree
+
+    def expand(
+        self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
+    ):
+        self.this_run.append(["expand", parent_id, children])
+
+    def flush(self, filepath=None):
+        with contextlib.ExitStack() as stack:
+            if filepath is None:
+                output = sys.stdout
+            else:
+                output = stack.enter_context(open(filepath, "w+"))
+
+            output.write(json.dumps(self.data, cls=DataclassEncoder))
+
+    def clear(self):
+        self.this_run = []
+        self.data = {"runs": [], "tree": {}}
 
 
 def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
@@ -25,19 +90,27 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
+    logger = MctsLogger()
+    logger.add_root(root.id, gamestate)
+
+    gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
     while time.time() < end:
-        gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
+        logger.new_run()
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
-                config, root, tree, take_action_mut, gamestate
+                config, logger, root, tree, take_action_mut, gamestate
             )
+            leaf_id = leaf_node.id
             result = simulate(
-                config, leaf_node, tree, take_action_mut, gamestate
+                config, logger, leaf_node, tree, take_action_mut, gamestate
             )
-            backup(config, tree, leaf_node, result)
+            logger.result(leaf_id, result)
+            backup(config, logger, tree, leaf_node, result)
             assert gamestate != gamestate_copy
             undo_actions(gamestate, config.undo_action, log)
         assert gamestate == gamestate_copy
+    logger.full_tree(tree)
+    logger.flush("scrap/mcts-run")
 
     child_action_pairs = (
         (tree.nodes[child_id], action)
@@ -50,19 +123,12 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
 
     action, _ = max(action_value_pairs, key=lambda x: x[1])
 
-    # import pprint
-
-    # pprint.pprint(
-    #     [
-    #         (node.id, node.times_visited, node.value)
-    #         for node in tree.nodes.values()
-    #     ]
-    # )
     return action
 
 
 def tree_policy(
     config: types.MctsConfig[G, A],
+    logger: MctsLogger,
     root: types.Node[A],
     tree: types.Tree[G, A],
     take_action_mut: t.Callable[[G, A], t.Optional[G]],
@@ -75,7 +141,7 @@ def tree_policy(
         # If node hasn't been expanded, expand it
         children = edges.get(node.id)
         if children is None:
-            expand(config, tree, node, gamestate)
+            expand(config, logger, tree, node, gamestate)
             child_id_action_pairs = edges.get(node.id)
             assert child_id_action_pairs is not None
             child_nodes = [
@@ -105,6 +171,7 @@ def tree_policy(
                 config, tree, nodes[child_id_action[0]]
             ),
         )
+        logger.ucb_choice(node.id, child_id, action)
         gamestate = take_action_mut(gamestate, action)
         node = nodes.get(child_id)
     raise Exception(f"tree_policy exceeded {MAX_STEPS} steps")
@@ -121,35 +188,14 @@ def ucb(config: types.MctsConfig, tree: types.Tree, node: types.Node) -> float:
 
 def expand(
     config: types.MctsConfig[G, A],
+    logger: MctsLogger,
     tree: types.Tree,
     node: types.Node,
     gamestate: G,
 ):
     nodes, edges = tree.nodes, tree.edges
 
-    child_action_pairs = edges.get(node.id)
-    assert not child_action_pairs
-    if not child_action_pairs:
-        add_children_to_tree(config, tree, node, gamestate)
-
-    child_nodes = [nodes[child_id] for (child_id, _) in edges[node.id]]
-    assert all(
-        child.times_visited == 0 for child in child_nodes
-    ), "Expanded node and got unvisted children"
-
-
-def add_children_to_tree(
-    config: types.MctsConfig[G, A],
-    tree: types.Tree,
-    node: types.Node,
-    gamestate: G,
-):
-    """
-    Add all children of `node` to the tree. Node must not have any children in
-    the tree yet.
-    """
-
-    assert tree.edges.get(node.id) is None
+    assert edges.get(node.id) is None
     tree.edges[node.id] = []
     for action in config.get_all_actions(gamestate):
         child_node = types.Node(
@@ -159,13 +205,15 @@ def add_children_to_tree(
             value=0,
         )
 
-        # print(child_node.id)
-        tree.nodes[child_node.id] = child_node
-        tree.edges[node.id].append((child_node.id, action))
+        nodes[child_node.id] = child_node
+        edges[node.id].append((child_node.id, action))
+
+    logger.expand(node.id, tree.edges[node.id])
 
 
 def simulate(
     config: types.MctsConfig[G, A],
+    logger: MctsLogger,
     node: types.Node[A],
     tree: t.Dict[int, t.List[types.Node[A]]],
     take_action_mut: t.Callable[[G, A], t.Optional[G]],
@@ -187,6 +235,7 @@ def simulate(
 
 def backup(
     config: types.MctsConfig,
+    logger: MctsLogger,
     tree: types.Tree[G, A],
     node: types.Node,
     result: float,

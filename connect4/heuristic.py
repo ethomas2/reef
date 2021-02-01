@@ -173,7 +173,7 @@ def heuristic(gamestate: types.GameState) -> float:
     remaining_open_quads_opponent = (
         len(open_quads_opponent) - num_open_quads_on_opponent_parity
     )
-    return (
+    return utils.sigmoid(
         num_open_trips
         + middle_bias
         + 3 * (num_open_quads_on_my_parity - num_open_quads_on_opponent_parity)

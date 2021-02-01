@@ -1,4 +1,5 @@
 import dataclasses
+import math
 import typing as t
 
 
@@ -52,3 +53,7 @@ def copy(obj):
         return {k: copy(v) for k, v in obj.items()}
     else:
         return obj
+
+
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))

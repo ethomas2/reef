@@ -10,6 +10,11 @@ P = t.TypeVar("P")  # Player
 NodeId = int
 
 
+class HeuristicVal(t.NamedTuple):
+    numerator: float
+    denominator: int
+
+
 # A node is not 1:1 with gamestate. A node is a series of actions from the
 # root. So two nodes can have the same gamestates if the sequence of actions to
 # the two nodes lead to the same gamestate
@@ -24,6 +29,8 @@ class Node(t.Generic[A]):
     ]  # map from player to how many times this player has won
 
     player: P  # whose turn it is to move
+
+    heuristic_val: t.Optional[HeuristicVal] = None
 
 
 @dataclass
@@ -54,6 +61,7 @@ class MctsConfig(t.Generic[G, A]):
     is_over: t.Callable[[G], t.Optional[int]]
     players: t.List[P]
 
+    heuristic_type: t.Optional[str] = None
     heuristic: t.Optional[t.Callable[[G], float]] = None
     C = 1 / math.sqrt(2)
 
@@ -61,6 +69,7 @@ class MctsConfig(t.Generic[G, A]):
     # final node has to be same as something
     budget: float = 1.0
     decisive_moves_heuristic: bool = False
+    decisive_moves_heuristic_with_propogation: bool = False
 
 
 @dataclass

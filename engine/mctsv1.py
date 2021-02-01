@@ -82,9 +82,9 @@ class MctsLogger:
             if filepath is None:
                 output = sys.stdout
             else:
-                output = stack.enter_context(open(filepath, "w+"))
+                output = stack.enter_context(open(filepath, "a+"))
 
-            output.write(json.dumps(self.data, cls=DataclassEncoder))
+            print(json.dumps(self.data, cls=DataclassEncoder), file=output)
 
     def clear(self):
         self.this_run = []
@@ -155,6 +155,12 @@ def tree_policy(
 ) -> (types.Node[A], bool):
     nodes, edges = tree.nodes, tree.edges
 
+    ucb_fn = {
+        None: ucb_basic,
+        "pre-visit": ucb_with_pre_visit_heuristic,
+        "simple": ucb_with_simple_heuristic,
+    }[config.heuristic_type]
+
     node = root
     for _ in range(MAX_STEPS):
         # If node hasn't been expanded, expand it
@@ -174,19 +180,10 @@ def tree_policy(
         if children == []:
             return node
 
-        # if node has an unvisited child, return the unvisited child
-        unvisited_children = [
-            nodes[child_id]
-            for (child_id, _) in children
-            if nodes[child_id].times_visited == 0
-        ]
-        if len(unvisited_children) > 0:
-            return random.choice(unvisited_children)
-
         # otherwise walk down the tree via ucb
         child_id, action = max(
             children,
-            key=lambda child_id_action: ucb(
+            key=lambda child_id_action: ucb_fn(
                 config,
                 tree,
                 nodes[child_id_action[0]],
@@ -199,15 +196,47 @@ def tree_policy(
     raise Exception(f"tree_policy exceeded {MAX_STEPS} steps")
 
 
-def ucb(
+def ucb_basic(
     config: types.MctsConfig, tree: types.Tree, node: types.Node, player: P
 ) -> float:
+    if node.times_visited == 0:
+        return float("inf")
     xj = node.wins_vec[player] / node.times_visited
     parent = tree.nodes[node.parent_id]
     explore_term = config.C * math.sqrt(
         math.log(parent.times_visited) / float(node.times_visited)
     )
     return xj + explore_term
+
+
+def ucb_with_pre_visit_heuristic(
+    config: types.MctsConfig, tree: types.Tree, node: types.Node, player: P
+) -> float:
+    """
+    Like ucb but adds heuristic. Pretends each node has already been visited n
+    times with a reward of k each time.
+    """
+    n, k = node.heuristic_val.denominator, node.heuristic_val.numerator
+    assert config.heuristic is not None
+    assert config.heuristic_type == "pre-visit"
+    assert n > 0
+    assert 0 <= k <= n, k
+    xj = (node.wins_vec[player] + k) / (node.times_visited + n)
+    parent = tree.nodes[node.parent_id]
+    num_siblings = len(tree.edges[parent.id])
+    explore_term = config.C * math.sqrt(
+        math.log(parent.times_visited + n * num_siblings)
+        / float(node.times_visited + n)
+    )
+    return xj + explore_term
+
+
+def ucb_with_simple_heuristic(
+    config: types.MctsConfig, tree: types.Tree, node: types.Node, player: P
+) -> float:
+    assert config.heuristic_type == "basic"
+    assert config.heuristic is not None
+    return ucb_basic(config, tree, node, player) + node.heuristic
 
 
 def expand(
@@ -227,17 +256,22 @@ def expand(
 
     player_idx = config.players.index(gamestate.player)
     for action in config.get_all_actions(gamestate):
+
+        # not using a logging take_action_mut here on purpose
+        new_gamestate = config.take_action_mut(gamestate, action)
         child_node = types.Node(
             id=int(random.getrandbits(64)),
             parent_id=node.id,
             times_visited=0,
             wins_vec={p: 0 for p in config.players},
-            # TODO: making the assumption here that it's always the next person
-            # in the list's turn. Instead we should take the action, see whose
-            # turn it ends up being, and undo it immediately afterwards. Or
-            # return the player whose turn it is in get_all_actions
-            player=config.players[(player_idx + 1) % len(config.players)],
+            player=new_gamestate.player,
+            heuristic_val=(
+                None
+                if config.heuristic_type is None
+                else types.HeuristicVal(5 * config.heuristic(gamestate), 5)
+            ),
         )
+        config.undo_action(gamestate, action)
 
         nodes[child_node.id] = child_node
         edges[node.id].append((child_node.id, action))
@@ -299,25 +333,3 @@ def undo_actions(
     for action in reversed(log):
         undo_action(gamestate, action)
     return gamestate
-
-
-# import sys
-
-
-# def info(type, value, tb):
-#     if hasattr(sys, "ps1") or not sys.stderr.isatty():
-#         # we are in interactive mode or we don't have a tty-like
-#         # device, so we call the default hook
-#         sys.__excepthook__(type, value, tb)
-#     else:
-#         import traceback, pdb
-
-#         # we are NOT in interactive mode, print the exception...
-#         traceback.print_exception(type, value, tb)
-#         print
-#         # ...then start the debugger in post-mortem mode.
-#         # pdb.pm() # deprecated
-#         pdb.post_mortem(tb)  # more "modern"
-
-
-# sys.excepthook = info

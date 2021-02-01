@@ -25,12 +25,22 @@ import connect4._types as c4types
 from engine.minimax import minimax
 
 
-AGENT_TYPES = ["random", "minimax", "mcts", "human"]
+AGENT_TYPES = [
+    "random",
+    "minimax",
+    "mcts",
+    "human",
+    "mcts-noh",
+    "mcts-previsith",
+    "mcts-basich",
+]
 AgentType = t.Union[
     t.Literal["random"],
     t.Literal["minimax"],
-    t.Literal["mcts"],
     t.Literal["human"],
+    t.Literal["mcts-noh"],
+    t.Literal["mcts-previsith"],
+    t.Literal["mcts-basich"],
 ]
 
 
@@ -49,6 +59,7 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
             print(fmt.format_gamestate(gamestate), file=output)
             print("\n", file=output)
         if (winner := is_over(gamestate)) is not None:
+            return winner
             if output:
                 print(f"Game Over. Winner {winner}", file=output)
             break
@@ -63,7 +74,8 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
                     break
         else:
             action = agent.get_action(gamestate)
-            print(action)
+            if output:
+                print(action, file=output)
             newgamestate = take_action_mut(gamestate, action)
             if newgamestate is None:
                 utils.assert_never(
@@ -72,6 +84,7 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
 
 
 def get_agent(agent_type: AgentType) -> Agent:
+    mcts_budget = 2
     if agent_type == "random":
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
@@ -127,14 +140,47 @@ def get_agent(agent_type: AgentType) -> Agent:
                 return (inp, gamestate.player)
 
         return Agent(get_action=get_action, agent_type=agent_type)
-    elif agent_type == "mcts":
+    elif agent_type == "mcts-noh":
         config = types.MctsConfig(
             take_action_mut=take_action_mut,
             undo_action=undo_action,
             get_all_actions=get_all_actions,
             is_over=is_over,
             players=["X", "O"],
-            budget=2,
+            budget=mcts_budget,
+        )
+
+        def get_action(gamestate: c4types.GameState) -> c4types.Action:
+            return mcts_v1(config, gamestate)
+
+        return Agent(get_action=get_action, agent_type=agent_type)
+    elif agent_type == "mcts-basich":
+        config = types.MctsConfig(
+            take_action_mut=take_action_mut,
+            undo_action=undo_action,
+            get_all_actions=get_all_actions,
+            is_over=is_over,
+            players=["X", "O"],
+            budget=mcts_budget,
+            heuristic_type="basic",
+            heuristic=heuristic,
+        )
+
+        def get_action(gamestate: c4types.GameState) -> c4types.Action:
+            return mcts_v1(config, gamestate)
+
+        return Agent(get_action=get_action, agent_type=agent_type)
+
+    elif agent_type == "mcts-previsith":
+        config = types.MctsConfig(
+            take_action_mut=take_action_mut,
+            undo_action=undo_action,
+            get_all_actions=get_all_actions,
+            is_over=is_over,
+            players=["X", "O"],
+            budget=mcts_budget,
+            heuristic_type="pre-visit",
+            heuristic=heuristic,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:

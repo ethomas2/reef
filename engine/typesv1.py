@@ -31,7 +31,7 @@ class Node(t.Generic[A]):
     # node
     score_vec: ScoreVec
 
-    player: P  # whose turn it is to move
+    # player: P  # whose turn it is to move
 
     heuristic_val: t.Optional[HeuristicVal] = None
 

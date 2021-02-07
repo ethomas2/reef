@@ -124,10 +124,14 @@ def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player]]:
         return "player"
 
 
-def final_score(state: types.GameState) -> float:
+def final_score(state: types.GameState) -> t.Dict[str, float]:
     assert is_over(state) is not None
     board = state.board
-    return sum([x for row in board for x in row if x is not None])
+    score = sum([x for row in board for x in row if x is not None])
+
+    BREAKPOINT = 4192  # assume score will not be over 4192
+    normalized_score = score / BREAKPOINT
+    return {"player": normalized_score}
 
 
 def get_all_actions(gamestate: types.GameState) -> t.List[types.Action]:

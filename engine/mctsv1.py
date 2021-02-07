@@ -116,7 +116,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
         parent_id=-1,
         times_visited=0,
         score_vec={p: 0 for p in config.players},
-        player=root_gamestate.player,
+        # player=root_gamestate.player,
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
@@ -124,6 +124,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
     logger.add_root(root.id, root_gamestate)
 
     gamestate = copy.deepcopy(root_gamestate)  # TODO: remove
+    player = gamestate.player
     while time.time() < end:
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
@@ -140,7 +141,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
             )
             logger.result(leaf_id, winning_player)
             backup(config, logger, tree, leaf_node, winning_player, gamestate)
-            assert gamestate != gamestate_copy
+            # assert gamestate != gamestate_copy
             if config.undo_action is not None:
                 undo_actions(gamestate, config.undo_action, log)
             else:
@@ -154,6 +155,10 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
         (tree.nodes[child_id], action)
         for (child_id, action) in tree.edges[root.id]
     )
+    # if any(player not in child.score_vec for (child, a) in child_action_pairs):
+    #     import pdb
+
+    #     pdb.set_trace()  # noqa: E702
     action_value_pairs = [
         (action, child.score_vec[player] / float(child.times_visited))
         for (child, action) in child_action_pairs
@@ -200,7 +205,7 @@ def tree_policy(
             return node
 
         # otherwise walk down the tree via ucb
-        if gamestate.player == "random":
+        if gamestate.player == "environment":
             child_id, action = random.choice(children)
         else:
             child_id, action = max(
@@ -279,20 +284,17 @@ def expand(
     for action in config.get_all_actions(gamestate):
 
         # not using a logging take_action_mut here on purpose
-        new_gamestate = config.take_action_mut(gamestate, action)
         child_node = types.Node(
             id=int(random.getrandbits(64)),
             parent_id=node.id,
             times_visited=0,
             score_vec={p: 0 for p in config.players},
-            player=new_gamestate.player,
             heuristic_val=(
                 None
                 if config.heuristic_type is None
                 else types.HeuristicVal(5 * config.heuristic(gamestate), 5)
             ),
         )
-        config.undo_action(gamestate, action)
 
         nodes[child_node.id] = child_node
         edges[node.id].append((child_node.id, action))
@@ -328,12 +330,14 @@ def backup(
     winning_player: P,
     gamestate: G,
 ):
-    score_vec = config.end_score and config.end_score(gamestate)
+    assert config.is_over(gamestate)
+    score_vec = config.final_score and config.final_score(gamestate)
     assert all(0 <= v <= 1 for v in score_vec.values())
     while node is not None:
         node.times_visited += 1
         if score_vec is not None:
-            node.score_vec += score_vec
+            for key, val in score_vec.items():
+                node.score_vec[key] += val
         # winning_player could be "draw". Should includ that in the type
         if winning_player in node.score_vec:
             node.score_vec[winning_player] += 1

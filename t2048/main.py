@@ -117,6 +117,21 @@ def get_agent(agent_type: AgentType) -> Agent:
                 return INP_MAP[inp]
 
         return Agent(get_action=get_action, agent_type=agent_type)
+    elif agent_type == "mcts":
+        mcts_budget = 2
+        config = types.MctsConfig(
+            take_action_mut=take_action_mut,
+            get_all_actions=get_all_actions,
+            is_over=is_over,
+            final_score=final_score,
+            players=["player"],
+            budget=mcts_budget,
+        )
+
+        def get_action(gamestate: c4types.GameState) -> c4types.Action:
+            return mcts_v1(config, gamestate)
+
+        return Agent(get_action=get_action, agent_type=agent_type)
 
     else:
         utils.assert_never(f"Invalid agent type {agent_type}")

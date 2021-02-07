@@ -15,6 +15,8 @@ class HeuristicVal(t.NamedTuple):
     denominator: int
 
 
+ScoreVec = t.Dict[P, float]
+
 # A node is not 1:1 with gamestate. A node is a series of actions from the
 # root. So two nodes can have the same gamestates if the sequence of actions to
 # the two nodes lead to the same gamestate
@@ -24,9 +26,10 @@ class Node(t.Generic[A]):
     parent_id: t.Optional[NodeId]
 
     times_visited: int
-    wins_vec: t.Dict[
-        P, int
-    ]  # map from player to how many times this player has won
+
+    # map from player to total score for this player across all visits to this
+    # node
+    score_vec: ScoreVec
 
     player: P  # whose turn it is to move
 
@@ -43,6 +46,30 @@ class Tree(t.Generic[G, A]):
 
 
 @dataclass
+class MctsConfig(t.Generic[G, A]):
+    take_action_mut: t.Callable[[G, A], t.Optional[G]]
+    get_all_actions: t.Callable[[G], t.Iterable[A]]
+    is_over: t.Callable[[G], t.Optional[P]]
+    final_score: t.Callable[[G], t.Optional[ScoreVec]]
+    players: t.List[P]
+
+    # Optional args
+
+    # maybe remove undo_action
+    undo_action: t.Optional[t.Callable[[G, A], t.Optional[G]]] = None
+    heuristic_type: t.Optional[str] = None
+    heuristic: t.Optional[t.Callable[[G], float]] = None
+    end_score: t.Optional[t.Callable[[G], t.Dict[P, float]]] = None
+    C = 1 / math.sqrt(2)
+
+    # TODO: change budget to terminationconfig, allows time bank or thing where
+    # final node has to be same as something
+    budget: float = 1.0
+    decisive_moves_heuristic: bool = False
+
+
+################################ Minimax Config ###############################
+@dataclass
 class MutableActionConfig(t.Generic[G, A]):
     take_action_mut: t.Callable[[G, A], t.Optional[G]]
     undo_action: t.Callable[[G, A], t.Optional[G]]
@@ -51,25 +78,6 @@ class MutableActionConfig(t.Generic[G, A]):
 @dataclass
 class ImmutableActionConfig(t.Generic[G, A]):
     take_action_immut: t.Callable[[G, A], t.Optional[G]]
-
-
-@dataclass
-class MctsConfig(t.Generic[G, A]):
-    take_action_mut: t.Callable[[G, A], t.Optional[G]]
-    undo_action: t.Callable[[G, A], t.Optional[G]]
-    get_all_actions: t.Callable[[G], t.Iterable[A]]
-    is_over: t.Callable[[G], t.Optional[int]]
-    players: t.List[P]
-
-    heuristic_type: t.Optional[str] = None
-    heuristic: t.Optional[t.Callable[[G], float]] = None
-    C = 1 / math.sqrt(2)
-
-    # TODO: change budget to terminationconfig, allows time bank or thing where
-    # final node has to be same as something
-    budget: float = 1.0
-    decisive_moves_heuristic: bool = False
-    decisive_moves_heuristic_with_propogation: bool = False
 
 
 @dataclass

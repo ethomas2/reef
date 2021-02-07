@@ -298,7 +298,8 @@ def take_action(
 
 
 def take_action_mut(
-    state: types.GameState, action: types.Action
+    state: types.GameState,
+    action: types.Action,
 ) -> t.Optional[types.GameState]:
     player = state.players[state.player]
     if isinstance(action, types.DrawCenterCardAction):

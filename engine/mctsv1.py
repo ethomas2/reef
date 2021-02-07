@@ -32,23 +32,30 @@ class MctsLogger:
     that's necessary for correctness
     """
 
-    def __init__(self):
+    def __init__(self, log=True):
         self.this_run = []
         self.data = {
             "runs": [self.this_run],
         }
+        self.log = log
 
     def add_root(self, root_id: int, gamestate: G):
+        if not self.log:
+            return
         assert (
             "root" not in self.data
         ), "add_root should only be called once per logger"
         self.data["root"] = {"root_id": root_id, "gamestate": gamestate}
 
     def new_run(self):
+        if not self.log:
+            return
         self.this_run = []
         self.data["runs"].append(self.this_run)
 
     def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
+        if not self.log:
+            return
         self.this_run.append(
             {
                 "type": "ucb choice",
@@ -59,6 +66,8 @@ class MctsLogger:
         )
 
     def result(self, node_id: int, result: float):
+        if not self.log:
+            return
         self.this_run.append(
             {"type": "result", "node_id": node_id, "result": result}
         )
@@ -66,6 +75,8 @@ class MctsLogger:
     def expand(
         self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
     ):
+        if not self.log:
+            return
         self.this_run.append(
             {
                 "type": "expand",
@@ -75,9 +86,13 @@ class MctsLogger:
         )
 
     def full_tree(self, tree: types.Tree[G, A]):
+        if not self.log:
+            return
         self.data["final_tree"] = tree
 
     def flush(self, filepath=None):
+        if not self.log:
+            return
         with contextlib.ExitStack() as stack:
             if filepath is None:
                 output = sys.stdout
@@ -87,27 +102,28 @@ class MctsLogger:
             print(json.dumps(self.data, cls=DataclassEncoder), file=output)
 
     def clear(self):
+        if not self.log:
+            return
         self.this_run = []
         self.data = {"runs": [], "tree": {}}
 
 
-def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
+def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
     start = time.time()
     end = start + config.budget
     root = types.Node(
         id=0,
         parent_id=-1,
         times_visited=0,
-        wins_vec={p: 0 for p in config.players},
-        player=gamestate.player,
+        score_vec={p: 0 for p in config.players},
+        player=root_gamestate.player,
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
-    logger = MctsLogger()
-    logger.add_root(root.id, gamestate)
+    logger = MctsLogger(log=False)
+    logger.add_root(root.id, root_gamestate)
 
-    gamestate_copy = copy.deepcopy(gamestate)  # TODO: remove
-    player = gamestate.player
+    gamestate = copy.deepcopy(root_gamestate)  # TODO: remove
     while time.time() < end:
         with action_logger(config.take_action_mut) as (take_action_mut, log):
             leaf_node = tree_policy(
@@ -123,10 +139,13 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
                 gamestate,
             )
             logger.result(leaf_id, winning_player)
-            backup(config, logger, tree, leaf_node, winning_player)
+            backup(config, logger, tree, leaf_node, winning_player, gamestate)
             assert gamestate != gamestate_copy
-            undo_actions(gamestate, config.undo_action, log)
-        assert gamestate == gamestate_copy
+            if config.undo_action is not None:
+                undo_actions(gamestate, config.undo_action, log)
+            else:
+                gamestate = copy.deepcopy(root_gamestate)
+        assert gamestate == root_gamestate
         logger.new_run()
     logger.full_tree(tree)
     logger.flush(LOGFILE)
@@ -136,7 +155,7 @@ def mcts_v1(config: types.MctsConfig[G, A], gamestate: G) -> A:
         for (child_id, action) in tree.edges[root.id]
     )
     action_value_pairs = [
-        (action, child.wins_vec[player] / float(child.times_visited))
+        (action, child.score_vec[player] / float(child.times_visited))
         for (child, action) in child_action_pairs
     ]
 
@@ -181,15 +200,18 @@ def tree_policy(
             return node
 
         # otherwise walk down the tree via ucb
-        child_id, action = max(
-            children,
-            key=lambda child_id_action: ucb_fn(
-                config,
-                tree,
-                nodes[child_id_action[0]],
-                gamestate.player,
-            ),
-        )
+        if gamestate.player == "random":
+            child_id, action = random.choice(children)
+        else:
+            child_id, action = max(
+                children,
+                key=lambda child_id_action: ucb_fn(
+                    config,
+                    tree,
+                    nodes[child_id_action[0]],
+                    gamestate.player,
+                ),
+            )
         logger.ucb_choice(node.id, child_id, action)
         gamestate = take_action_mut(gamestate, action)
         node = nodes.get(child_id)
@@ -201,7 +223,7 @@ def ucb_basic(
 ) -> float:
     if node.times_visited == 0:
         return float("inf")
-    xj = node.wins_vec[player] / node.times_visited
+    xj = node.score_vec[player] / node.times_visited
     parent = tree.nodes[node.parent_id]
     explore_term = config.C * math.sqrt(
         math.log(parent.times_visited) / float(node.times_visited)
@@ -221,7 +243,7 @@ def ucb_with_pre_visit_heuristic(
     assert config.heuristic_type == "pre-visit"
     assert n > 0
     assert 0 <= k <= n, k
-    xj = (node.wins_vec[player] + k) / (node.times_visited + n)
+    xj = (node.score_vec[player] + k) / (node.times_visited + n)
     parent = tree.nodes[node.parent_id]
     num_siblings = len(tree.edges[parent.id])
     explore_term = config.C * math.sqrt(
@@ -254,7 +276,6 @@ def expand(
     if config.is_over(gamestate) is not None:
         return
 
-    player_idx = config.players.index(gamestate.player)
     for action in config.get_all_actions(gamestate):
 
         # not using a logging take_action_mut here on purpose
@@ -263,7 +284,7 @@ def expand(
             id=int(random.getrandbits(64)),
             parent_id=node.id,
             times_visited=0,
-            wins_vec={p: 0 for p in config.players},
+            score_vec={p: 0 for p in config.players},
             player=new_gamestate.player,
             heuristic_val=(
                 None
@@ -305,12 +326,17 @@ def backup(
     tree: types.Tree[G, A],
     node: types.Node,
     winning_player: P,
+    gamestate: G,
 ):
+    score_vec = config.end_score and config.end_score(gamestate)
+    assert all(0 <= v <= 1 for v in score_vec.values())
     while node is not None:
         node.times_visited += 1
+        if score_vec is not None:
+            node.score_vec += score_vec
         # winning_player could be "draw". Should includ that in the type
-        if winning_player in node.wins_vec:
-            node.wins_vec[winning_player] += 1
+        if winning_player in node.score_vec:
+            node.score_vec[winning_player] += 1
         node = tree.nodes.get(node.parent_id)
 
 

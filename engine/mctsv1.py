@@ -11,6 +11,10 @@ import typing as t
 import engine.typesv1 as types
 
 
+import wandb
+
+wandb.init("mcts-tracking")
+
 G = t.TypeVar("G")
 A = t.TypeVar("A")
 P = t.TypeVar("P")  # player
@@ -32,80 +36,75 @@ class MctsLogger:
     that's necessary for correctness
     """
 
-    def __init__(self, log=True):
-        self.this_run = []
-        self.data = {
-            "runs": [self.this_run],
-        }
-        self.log = log
+    def __init__(self, log_whiltelist=None):
+        self.gs_num = 0
+        self.run_num = 0
 
-    def add_root(self, root_id: int, gamestate: G):
-        if not self.log:
-            return
-        assert (
-            "root" not in self.data
-        ), "add_root should only be called once per logger"
-        self.data["root"] = {"root_id": root_id, "gamestate": gamestate}
+    def new_gs(self, root_id: int, gamestate: G):
+        self.gs_num += 1
+        self.run_num = 0
 
     def new_run(self):
-        if not self.log:
-            return
-        self.this_run = []
-        self.data["runs"].append(self.this_run)
+        self.run_num += 1
 
     def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
-        if not self.log:
-            return
-        self.this_run.append(
+        wandb.log(
             {
                 "type": "ucb choice",
+                "gs": self.gs_num,
+                "run": self.run_num,
                 "parent_id": parent_node_id,
                 "child_id": child_node_id,
-                "action": action,
+                "action": (
+                    action.__dict__
+                    if dataclasses.is_dataclass(action)
+                    else action
+                ),
             }
         )
 
     def result(self, node_id: int, result: float):
-        if not self.log:
-            return
-        self.this_run.append(
-            {"type": "result", "node_id": node_id, "result": result}
+        wandb.log(
+            {
+                "type": "result",
+                "gs": self.gs_num,
+                "run": self.run_num,
+                "node_id": node_id,
+                "result": result,
+            }
         )
 
     def expand(
         self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
     ):
-        if not self.log:
-            return
-        self.this_run.append(
+        wandb.log(
             {
                 "type": "expand",
+                "gs": self.gs_num,
+                "run": self.run_num,
                 "parent_id": parent_id,
-                "child_id_action_pairs": children,
+                "child_id_action_pairs": [
+                    (
+                        node_id,
+                        action.__dict__
+                        if dataclasses.is_dataclass(action)
+                        else action,
+                    )
+                    for (node_id, action) in children
+                ],
             }
         )
 
     def full_tree(self, tree: types.Tree[G, A]):
-        if not self.log:
-            return
-        self.data["final_tree"] = tree
+        pass
+        # if not (
+        #     "full_tree" in self.log_whiltelist or "*" in self.log_whiltelist
+        # ):
+        #     return
+        # self.data["final_tree"] = tree
 
-    def flush(self, filepath=None):
-        if not self.log:
-            return
-        with contextlib.ExitStack() as stack:
-            if filepath is None:
-                output = sys.stdout
-            else:
-                output = stack.enter_context(open(filepath, "a+"))
 
-            print(json.dumps(self.data, cls=DataclassEncoder), file=output)
-
-    def clear(self):
-        if not self.log:
-            return
-        self.this_run = []
-        self.data = {"runs": [], "tree": {}}
+logger = MctsLogger()
 
 
 def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
@@ -120,8 +119,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
 
-    logger = MctsLogger(log=False)
-    logger.add_root(root.id, root_gamestate)
+    logger.new_gs(root.id, root_gamestate)
 
     gamestate = copy.deepcopy(root_gamestate)  # TODO: remove
     player = gamestate.player
@@ -139,8 +137,8 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
                 take_action_mut,
                 gamestate,
             )
-            logger.result(leaf_id, winning_player)
             backup(config, logger, tree, leaf_node, winning_player, gamestate)
+            logger.result(leaf_id, winning_player)
             # assert gamestate != gamestate_copy
             if config.undo_action is not None:
                 undo_actions(gamestate, config.undo_action, log)
@@ -149,19 +147,16 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
         assert gamestate == root_gamestate
         logger.new_run()
     logger.full_tree(tree)
-    logger.flush(LOGFILE)
 
     child_action_pairs = (
         (tree.nodes[child_id], action)
         for (child_id, action) in tree.edges[root.id]
     )
-    # if any(player not in child.score_vec for (child, a) in child_action_pairs):
-    #     import pdb
 
-    #     pdb.set_trace()  # noqa: E702
     action_value_pairs = [
         (action, child.score_vec[player] / float(child.times_visited))
         for (child, action) in child_action_pairs
+        if child.times_visited > 0  # this shouldn't happen
     ]
 
     action, _ = max(action_value_pairs, key=lambda x: x[1])
@@ -285,7 +280,7 @@ def expand(
 
         # not using a logging take_action_mut here on purpose
         child_node = types.Node(
-            id=int(random.getrandbits(64)),
+            id=int(random.getrandbits(32)),
             parent_id=node.id,
             times_visited=0,
             score_vec={p: 0 for p in config.players},

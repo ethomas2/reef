@@ -16,7 +16,7 @@ def init_game() -> types.GameState:
     choices = list(itertools.product(range(4), range(4)))
     init_placements = random.sample(choices, k=2)
     for (r, c) in init_placements:
-        board[r][c] = random.randint(1, 2)
+        board[r][c] = random.choice([2, 4])
     return types.GameState(player="player", board=board)
 
 
@@ -130,6 +130,7 @@ def final_score(state: types.GameState) -> t.Dict[str, float]:
     score = sum([x for row in board for x in row if x is not None])
 
     BREAKPOINT = 4192  # assume score will not be over 4192
+    assert score <= BREAKPOINT
     normalized_score = score / BREAKPOINT
     return {"player": normalized_score}
 
@@ -165,6 +166,7 @@ def get_all_player_actions(
 def get_all_environment_actions(
     gamestate: types.GameState,
 ) -> t.List[types.EnvironmentAction]:
+    assert gamestate.player == "environment"
     board = gamestate.board
     indicies = itertools.product(range(4), range(4))
     placements = [(r, c) for r, c in indicies if board[r][c] is None]
@@ -176,7 +178,12 @@ def get_all_environment_actions(
 
 
 def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
-    actions = get_all_actions(gamestate)
-    if len(actions) == 0:
-        return None
-    return random.choice(actions)
+    if gamestate.player == "environment":
+        board = gamestate.board
+        indicies = itertools.product(range(4), range(4))
+        placements = [(r, c) for r, c in indicies if board[r][c] is None]
+        return types.EnvironmentAction(
+            placement=random.choice(placements), val=random.choice([2, 4])
+        )
+    else:
+        return random.choice(get_all_actions(gamestate))

@@ -118,7 +118,7 @@ def get_agent(agent_type: AgentType) -> Agent:
 
         return Agent(get_action=get_action, agent_type=agent_type)
     elif agent_type == "mcts":
-        mcts_budget = 0.1
+        mcts_budget = 0.5
         config = types.MctsConfig(
             take_action_mut=take_action_mut,
             get_all_actions=get_all_actions,

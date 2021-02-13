@@ -147,14 +147,6 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
             score_vec = rollout(
                 config, logger, leaf_node, tree, take_action_mut, gamestate
             )
-            # winning_player = simulate(
-            #     config,
-            #     logger,
-            #     leaf_node,
-            #     tree,
-            #     take_action_mut,
-            #     gamestate,
-            # )
             backup(config, logger, tree, leaf_node, score_vec, gamestate)
             logger.result(leaf_id, score_vec)
             # assert gamestate != gamestate_copy
@@ -323,8 +315,8 @@ def rollout(
     take_action_mut: t.Callable[[G, A], t.Optional[G]],
     gamestate: G,
 ) -> types.ScoreVec:
-    if config.rollout_heuristic is not None:
-        return config.rollout_heuristic(gamestate)
+    if config.rollout_policy is not None:
+        return config.rollout_policy(gamestate)
     else:
         winning_player = simulate(
             config, logger, node, tree, take_action_mut, gamestate

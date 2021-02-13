@@ -120,8 +120,11 @@ def take_player_action(gamestate, action):
 
 def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player]]:
     board = state.board
-    if all(x is not None for row in board for x in row):
+    if get_all_actions(state) == []:
         return "player"
+
+
+BREAKPOINT = 4096  # assume score will not be over 4192
 
 
 def final_score(state: types.GameState) -> t.Dict[str, float]:
@@ -129,7 +132,33 @@ def final_score(state: types.GameState) -> t.Dict[str, float]:
     board = state.board
     score = sum([x for row in board for x in row if x is not None])
 
-    BREAKPOINT = 4192  # assume score will not be over 4192
+    assert score <= BREAKPOINT
+    normalized_score = score / BREAKPOINT
+    return {"player": normalized_score}
+
+
+def rollout_policy(gamestate: types.GameState) -> t.Dict[str, float]:
+
+    assert is_over(gamestate) is not None
+    board = gamestate.board
+    score = sum([x for row in board for x in row if x is not None])
+
+    coords = itertools.product(range(4), range(4))
+
+    def is_peak(i, j):
+        neighbors = [
+            (x, y)
+            for x, y in [(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)]
+            if 0 <= x < 4 and 0 <= y < 4
+        ]
+        return all(
+            (board[i][j] or 0) > (board[i2][j2] or 0) for i2, j2 in neighbors
+        )
+
+    peaks = [board[i][j] for (i, j) in coords if is_peak(i, j)]
+    non_max_peaks = sorted(peaks)[1:]
+    score -= sum(non_max_peaks)
+
     assert score <= BREAKPOINT
     normalized_score = score / BREAKPOINT
     return {"player": normalized_score}
@@ -151,15 +180,22 @@ def get_all_player_actions(
     actions = set()
     locations = itertools.product(range(4), range(4))
     for (r, c) in locations:
-        if board[r][c] is not None:
-            if r + 1 < 4 and board[r + 1][c] is None:
-                actions.add("down")
-            elif r - 1 >= 0 and board[r - 1][c] is None:
-                actions.add("up")
-            elif c + 1 < 4 and board[r][c + 1] is None:
-                actions.add("right")
-            elif c - 1 >= 0 and board[r][c - 1] is None:
-                actions.add("left")
+        if r + 1 < 4 and (
+            board[r + 1][c] is None or board[r + 1][c] == board[r][c]
+        ):
+            actions.add("down")
+        elif r - 1 >= 0 and (
+            board[r - 1][c] is None or board[r - 1][c] == board[r][c]
+        ):
+            actions.add("up")
+        elif c + 1 < 4 and (
+            board[r][c + 1] is None or board[r][c + 1] == board[r][c]
+        ):
+            actions.add("right")
+        elif c - 1 >= 0 and (
+            board[r][c - 1] is None or board[r][c - 1] == board[r][c]
+        ):
+            actions.add("left")
     return list(actions)
 
 

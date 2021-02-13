@@ -57,7 +57,7 @@ class MctsConfig(t.Generic[G, A]):
 
     # maybe remove undo_action
 
-    rollout_heuristic: t.Callable[[G], ScoreVec] = None
+    rollout_policy: t.Callable[[G], ScoreVec] = None
     undo_action: t.Optional[t.Callable[[G, A], t.Optional[G]]] = None
     heuristic_type: t.Optional[str] = None
     heuristic: t.Optional[t.Callable[[G], float]] = None

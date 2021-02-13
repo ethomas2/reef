@@ -14,6 +14,7 @@ from t2048.rules import (
     get_random_action,
     get_all_actions,
     final_score,
+    rollout_policy,
 )
 
 # from connect4.heuristic import heuristic
@@ -123,7 +124,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             take_action_mut=take_action_mut,
             get_all_actions=get_all_actions,
             is_over=is_over,
-            # rollout_heuristic=rollout_heuristic,
+            # rollout_policy=rollout_policy,
             final_score=final_score,
             players=["player"],
             budget=mcts_budget,

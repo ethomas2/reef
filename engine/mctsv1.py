@@ -328,6 +328,7 @@ def backup(
     assert config.is_over(gamestate)
     score_vec = config.final_score and config.final_score(gamestate)
     assert all(0 <= v <= 1 for v in score_vec.values())
+    assert set(score_vec.keys()) == set(config.players)
     while node is not None:
         node.times_visited += 1
         if score_vec is not None:

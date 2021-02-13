@@ -123,6 +123,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             take_action_mut=take_action_mut,
             get_all_actions=get_all_actions,
             is_over=is_over,
+            # rollout_heuristic=rollout_heuristic,
             final_score=final_score,
             players=["player"],
             budget=mcts_budget,

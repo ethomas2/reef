@@ -56,10 +56,11 @@ class MctsConfig(t.Generic[G, A]):
     # Optional args
 
     # maybe remove undo_action
+
+    rollout_heuristic: t.Callable[[G], ScoreVec] = None
     undo_action: t.Optional[t.Callable[[G, A], t.Optional[G]]] = None
     heuristic_type: t.Optional[str] = None
     heuristic: t.Optional[t.Callable[[G], float]] = None
-    end_score: t.Optional[t.Callable[[G], t.Dict[P, float]]] = None
     C = 1 / math.sqrt(2)
 
     # TODO: change budget to terminationconfig, allows time bank or thing where

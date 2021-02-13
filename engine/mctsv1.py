@@ -13,7 +13,6 @@ import engine.typesv1 as types
 
 import wandb
 
-wandb.init("mcts-tracking")
 
 G = t.TypeVar("G")
 A = t.TypeVar("A")
@@ -36,18 +35,28 @@ class MctsLogger:
     that's necessary for correctness
     """
 
-    def __init__(self, log_whiltelist=None):
+    def __init__(self, log_whiltelist=None, on=True):
+        self.on = on
+        if not self.on:
+            return
         self.gs_num = 0
         self.run_num = 0
+        wandb.init("mcts-tracking")
 
     def new_gs(self, root_id: int, gamestate: G):
+        if not self.on:
+            return
         self.gs_num += 1
         self.run_num = 0
 
     def new_run(self):
+        if not self.on:
+            return
         self.run_num += 1
 
     def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
+        if not self.on:
+            return
         wandb.log(
             {
                 "type": "ucb choice",
@@ -64,6 +73,8 @@ class MctsLogger:
         )
 
     def result(self, node_id: int, result: float):
+        if not self.on:
+            return
         wandb.log(
             {
                 "type": "result",
@@ -77,6 +88,8 @@ class MctsLogger:
     def expand(
         self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
     ):
+        if not self.on:
+            return
         wandb.log(
             {
                 "type": "expand",
@@ -96,6 +109,8 @@ class MctsLogger:
         )
 
     def full_tree(self, tree: types.Tree[G, A]):
+        if not self.on:
+            return
         pass
         # if not (
         #     "full_tree" in self.log_whiltelist or "*" in self.log_whiltelist
@@ -104,7 +119,7 @@ class MctsLogger:
         # self.data["final_tree"] = tree
 
 
-logger = MctsLogger()
+logger = MctsLogger(on=False)
 
 
 def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
@@ -129,16 +144,19 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
                 config, logger, root, tree, take_action_mut, gamestate
             )
             leaf_id = leaf_node.id
-            winning_player = simulate(
-                config,
-                logger,
-                leaf_node,
-                tree,
-                take_action_mut,
-                gamestate,
+            score_vec = rollout(
+                config, logger, leaf_node, tree, take_action_mut, gamestate
             )
-            backup(config, logger, tree, leaf_node, winning_player, gamestate)
-            logger.result(leaf_id, winning_player)
+            # winning_player = simulate(
+            #     config,
+            #     logger,
+            #     leaf_node,
+            #     tree,
+            #     take_action_mut,
+            #     gamestate,
+            # )
+            backup(config, logger, tree, leaf_node, score_vec, gamestate)
+            logger.result(leaf_id, score_vec)
             # assert gamestate != gamestate_copy
             if config.undo_action is not None:
                 undo_actions(gamestate, config.undo_action, log)
@@ -297,6 +315,30 @@ def expand(
     logger.expand(node.id, tree.edges[node.id])
 
 
+def rollout(
+    config: types.MctsConfig[G, A],
+    logger: MctsLogger,
+    node: types.Node[A],
+    tree: t.Dict[int, t.List[types.Node[A]]],
+    take_action_mut: t.Callable[[G, A], t.Optional[G]],
+    gamestate: G,
+) -> types.ScoreVec:
+    if config.rollout_heuristic is not None:
+        return config.rollout_heuristic(gamestate)
+    else:
+        winning_player = simulate(
+            config, logger, node, tree, take_action_mut, gamestate
+        )
+        # gamestate has bene mutated by simulate
+        final_score = config.final_score and config.final_score(gamestate)
+        score_vec = (
+            final_score
+            if final_score is not None
+            else {p: int(p == winning_player) for p in config.players}
+        )
+        return score_vec
+
+
 def simulate(
     config: types.MctsConfig[G, A],
     logger: MctsLogger,
@@ -322,21 +364,17 @@ def backup(
     logger: MctsLogger,
     tree: types.Tree[G, A],
     node: types.Node,
-    winning_player: P,
+    score_vec: types.ScoreVec,
     gamestate: G,
 ):
-    assert config.is_over(gamestate)
-    score_vec = config.final_score and config.final_score(gamestate)
+    # assert config.is_over(gamestate)
     assert all(0 <= v <= 1 for v in score_vec.values())
     assert set(score_vec.keys()) == set(config.players)
     while node is not None:
         node.times_visited += 1
-        if score_vec is not None:
-            for key, val in score_vec.items():
-                node.score_vec[key] += val
-        # winning_player could be "draw". Should includ that in the type
-        if winning_player in node.score_vec:
-            node.score_vec[winning_player] += 1
+        for key, val in score_vec.items():
+            node.score_vec[key] += val
+
         node = tree.nodes.get(node.parent_id)
 
 

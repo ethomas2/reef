@@ -28,6 +28,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
     tree = types.Tree(nodes={root.id: root}, edges={})
     gamestate = copy.deepcopy(root_gamestate)
 
+    nwalks = 0
     start = time.time()
     end = start + config.budget
     while time.time() < end:
@@ -37,6 +38,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
         )
         assert gamestate == root_gamestate
         upload_to_redis(walk_log)
+        nwalks += 1
 
     action = pick_best_action(tree, root_gamestate.player)
 
@@ -68,7 +70,7 @@ def tree_policy(
     walk_log: WalkLog,
     tree: types.Tree[G, A],
     gamestate: G,
-) -> (types.Node[A], bool):
+) -> types.Node[A]:
     nodes, edges = tree.nodes, tree.edges
 
     ucb_fn = {
@@ -80,18 +82,15 @@ def tree_policy(
     node = root
     for _ in range(MAX_STEPS):
         # If node hasn't been expanded, expand it
-        children = edges.get(node.id)
-        if children is None:
+        if edges.get(node.id) is None:
             expand(config, walk_log, tree, node, gamestate)
             assert edges.get(node.id) is not None
-            children = edges[node.id]
-            # TODO: do we need anything left in the if statement? vvvv
             child_nodes = [nodes[child_id] for (child_id, _) in edges[node.id]]
             if len(child_nodes) == 0:
-                # This node is a nermi
                 return node
             return random.choice(child_nodes)
-            # TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        children = edges[node.id]
 
         # if this is a terminal node, return it
         if children == []:
@@ -182,7 +181,7 @@ def expand(
 
     for action in config.get_all_actions(gamestate):
         child_node = types.Node(
-            id=int(random.getrandbits(32)),
+            id=int(random.getrandbits(64)),
             parent_id=node.id,
             times_visited=0,
             score_vec={p: 0 for p in config.players},
@@ -192,6 +191,9 @@ def expand(
                 else types.HeuristicVal(5 * config.heuristic(gamestate), 5)
             ),
         )
+        assert (
+            child_node.id not in nodes
+        ), f"nnodes {len(tree.nodes)} id {child_node.id}"
 
         nodes[child_node.id] = child_node
         edges[node.id].append((child_node.id, action))

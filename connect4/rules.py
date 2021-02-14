@@ -108,7 +108,7 @@ def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player, Draw]]:
     return None
 
 
-def final_score(state: types.GameState) -> t.Dict[types.Player, float]:
+def get_final_score(state: types.GameState) -> t.Dict[types.Player, float]:
     winner = is_over(state)
     assert winner is not None
     if winner in ["X", "O"]:

@@ -66,7 +66,7 @@ def take_player_action(gamestate, action):
             get_indexes(col=c, rev=True) for c in range(len(board[0]))
         ]
     else:
-        assert False, "action is not left or right or up or down"
+        assert False, f"action {action} is not left or right or up or down"
 
     for indexes in index_set:
         fixed = [False, False, False, False]
@@ -119,7 +119,6 @@ def take_player_action(gamestate, action):
 
 
 def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player]]:
-    board = state.board
     if get_all_actions(state) == []:
         return "player"
 
@@ -127,8 +126,7 @@ def is_over(state: types.GameState) -> t.Optional[t.Union[types.Player]]:
 BREAKPOINT = 4096  # assume score will not be over 4192
 
 
-def final_score(state: types.GameState) -> t.Dict[str, float]:
-    assert is_over(state) is not None
+def get_final_score(state: types.GameState) -> t.Dict[str, float]:
     board = state.board
     score = sum([x for row in board for x in row if x is not None])
 
@@ -138,8 +136,6 @@ def final_score(state: types.GameState) -> t.Dict[str, float]:
 
 
 def rollout_policy(gamestate: types.GameState) -> t.Dict[str, float]:
-
-    assert is_over(gamestate) is not None
     board = gamestate.board
     score = sum([x for row in board for x in row if x is not None])
 

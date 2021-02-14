@@ -13,7 +13,7 @@ from t2048.rules import (
     is_over,
     get_random_action,
     get_all_actions,
-    final_score,
+    get_final_score,
     rollout_policy,
 )
 
@@ -54,7 +54,7 @@ def play_game(agent: Agent, output: t.Optional[t.IO] = None):
             print(fmt.format_gamestate(gamestate), file=output)
             print("\n", file=output)
         if is_over(gamestate) is not None:
-            score = final_score(gamestate)
+            score = get_final_score(gamestate)
             if output:
                 print(f"Game Over. Score: {score}", file=output)
             break
@@ -125,7 +125,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             get_all_actions=get_all_actions,
             is_over=is_over,
             # rollout_policy=rollout_policy,
-            final_score=final_score,
+            get_final_score=get_final_score,
             players=["player"],
             budget=mcts_budget,
         )

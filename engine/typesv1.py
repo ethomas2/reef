@@ -50,7 +50,7 @@ class MctsConfig(t.Generic[G, A]):
     take_action_mut: t.Callable[[G, A], t.Optional[G]]
     get_all_actions: t.Callable[[G], t.Iterable[A]]
     is_over: t.Callable[[G], t.Optional[P]]
-    final_score: t.Callable[[G], t.Optional[ScoreVec]]
+    get_final_score: t.Callable[[G], t.Optional[ScoreVec]]
     players: t.List[P]
 
     # Optional args

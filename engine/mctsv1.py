@@ -1,185 +1,72 @@
-import contextlib
 import copy
-import dataclasses
-import json
 import math
 import random
-import sys
 import time
 import typing as t
 
 import engine.typesv1 as types
 
 
-import wandb
+# import wandb
 
 
 G = t.TypeVar("G")
 A = t.TypeVar("A")
 P = t.TypeVar("P")  # player
+WalkLog = t.List[t.Dict[str, t.Any]]
 
 MAX_STEPS = 10000
-LOGFILE = "scrap/mcts-run"
-
-
-class DataclassEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return o.__dict__
-        return o
-
-
-class MctsLogger:
-    """
-    Auxilary logging only. Action logging is done by a differnet thing since
-    that's necessary for correctness
-    """
-
-    def __init__(self, log_whiltelist=None, on=True):
-        self.on = on
-        if not self.on:
-            return
-        self.gs_num = 0
-        self.run_num = 0
-        wandb.init("mcts-tracking")
-
-    def new_gs(self, root_id: int, gamestate: G):
-        if not self.on:
-            return
-        self.gs_num += 1
-        self.run_num = 0
-
-    def new_run(self):
-        if not self.on:
-            return
-        self.run_num += 1
-
-    def ucb_choice(self, parent_node_id: int, child_node_id: int, action: A):
-        if not self.on:
-            return
-        wandb.log(
-            {
-                "type": "ucb choice",
-                "gs": self.gs_num,
-                "run": self.run_num,
-                "parent_id": parent_node_id,
-                "child_id": child_node_id,
-                "action": (
-                    action.__dict__
-                    if dataclasses.is_dataclass(action)
-                    else action
-                ),
-            }
-        )
-
-    def result(self, node_id: int, result: float):
-        if not self.on:
-            return
-        wandb.log(
-            {
-                "type": "result",
-                "gs": self.gs_num,
-                "run": self.run_num,
-                "node_id": node_id,
-                "result": result,
-            }
-        )
-
-    def expand(
-        self, parent_id: int, children: t.List[t.Tuple[types.NodeId, A]]
-    ):
-        if not self.on:
-            return
-        wandb.log(
-            {
-                "type": "expand",
-                "gs": self.gs_num,
-                "run": self.run_num,
-                "parent_id": parent_id,
-                "child_id_action_pairs": [
-                    (
-                        node_id,
-                        action.__dict__
-                        if dataclasses.is_dataclass(action)
-                        else action,
-                    )
-                    for (node_id, action) in children
-                ],
-            }
-        )
-
-    def full_tree(self, tree: types.Tree[G, A]):
-        if not self.on:
-            return
-        pass
-        # if not (
-        #     "full_tree" in self.log_whiltelist or "*" in self.log_whiltelist
-        # ):
-        #     return
-        # self.data["final_tree"] = tree
-
-
-logger = MctsLogger(on=False)
 
 
 def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
-    start = time.time()
-    end = start + config.budget
     root = types.Node(
         id=0,
         parent_id=-1,
         times_visited=0,
         score_vec={p: 0 for p in config.players},
-        # player=root_gamestate.player,
     )
     tree = types.Tree(nodes={root.id: root}, edges={})
+    gamestate = copy.deepcopy(root_gamestate)
 
-    logger.new_gs(root.id, root_gamestate)
-
-    gamestate = copy.deepcopy(root_gamestate)  # TODO: remove
-    player = gamestate.player
+    start = time.time()
+    end = start + config.budget
     while time.time() < end:
-        with action_logger(config.take_action_mut) as (take_action_mut, log):
-            leaf_node = tree_policy(
-                config, logger, root, tree, take_action_mut, gamestate
-            )
-            leaf_id = leaf_node.id
-            score_vec = rollout(
-                config, logger, leaf_node, tree, take_action_mut, gamestate
-            )
-            backup(config, logger, tree, leaf_node, score_vec, gamestate)
-            logger.result(leaf_id, score_vec)
-            # assert gamestate != gamestate_copy
-            if config.undo_action is not None:
-                undo_actions(gamestate, config.undo_action, log)
-            else:
-                gamestate = copy.deepcopy(root_gamestate)
+        walk_log = walk(config, root, tree, gamestate)
+        gamestate = restore_gamestate(
+            config, root_gamestate, gamestate, walk_log
+        )
         assert gamestate == root_gamestate
-        logger.new_run()
-    logger.full_tree(tree)
+        upload_to_redis(walk_log)
 
-    child_action_pairs = (
-        (tree.nodes[child_id], action)
-        for (child_id, action) in tree.edges[root.id]
-    )
-
-    action_value_pairs = [
-        (action, child.score_vec[player] / float(child.times_visited))
-        for (child, action) in child_action_pairs
-        if child.times_visited > 0  # this shouldn't happen
-    ]
-
-    action, _ = max(action_value_pairs, key=lambda x: x[1])
+    action = pick_best_action(tree, root_gamestate.player)
 
     return action
 
 
-def tree_policy(
+def walk(
     config: types.MctsConfig[G, A],
-    logger: MctsLogger,
     root: types.Node[A],
     tree: types.Tree[G, A],
-    take_action_mut: t.Callable[[G, A], t.Optional[G]],
+    gamestate: G,
+):
+    walk_log = []  # walk log will be mutated
+    ctx = {
+        "config": config,
+        "walk_log": walk_log,
+        "tree": tree,
+        "gamestate": gamestate,  # mutated by tree_policy & rollout
+    }
+    node = tree_policy(root=root, **ctx)
+    score_vec = rollout(node=node, **ctx)
+    backup(node=node, score_vec=score_vec, **ctx)
+    return walk_log
+
+
+def tree_policy(
+    root: types.Node[A],
+    config: types.MctsConfig[G, A],
+    walk_log: WalkLog,
+    tree: types.Tree[G, A],
     gamestate: G,
 ) -> (types.Node[A], bool):
     nodes, edges = tree.nodes, tree.edges
@@ -195,15 +82,16 @@ def tree_policy(
         # If node hasn't been expanded, expand it
         children = edges.get(node.id)
         if children is None:
-            expand(config, logger, tree, node, gamestate)
-            child_id_action_pairs = edges.get(node.id)
-            assert child_id_action_pairs is not None
-            child_nodes = [
-                nodes[child_id] for (child_id, _) in child_id_action_pairs
-            ]
+            expand(config, walk_log, tree, node, gamestate)
+            assert edges.get(node.id) is not None
+            children = edges[node.id]
+            # TODO: do we need anything left in the if statement? vvvv
+            child_nodes = [nodes[child_id] for (child_id, _) in edges[node.id]]
             if len(child_nodes) == 0:
+                # This node is a nermi
                 return node
             return random.choice(child_nodes)
+            # TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         # if this is a terminal node, return it
         if children == []:
@@ -222,9 +110,10 @@ def tree_policy(
                     gamestate.player,
                 ),
             )
-        logger.ucb_choice(node.id, child_id, action)
-        gamestate = take_action_mut(gamestate, action)
-        node = nodes.get(child_id)
+        assert nodes.get(child_id) is not None
+        walk_log.append({"event_type": "tree-policy-action", "action": action})
+        gamestate = config.take_action_mut(gamestate, action)
+        node = nodes[child_id]
     raise Exception(f"tree_policy exceeded {MAX_STEPS} steps")
 
 
@@ -273,11 +162,16 @@ def ucb_with_simple_heuristic(
 
 def expand(
     config: types.MctsConfig[G, A],
-    logger: MctsLogger,
+    walk_log: WalkLog,
     tree: types.Tree,
     node: types.Node,
     gamestate: G,
 ):
+    """
+    Add children to node. Should only be called on node that doesn't have
+    children already (i.e. called once per node. Different definition than
+    definition of expand in wikipedia
+    """
     nodes, edges = tree.nodes, tree.edges
 
     assert edges.get(node.id) is None
@@ -287,8 +181,6 @@ def expand(
         return
 
     for action in config.get_all_actions(gamestate):
-
-        # not using a logging take_action_mut here on purpose
         child_node = types.Node(
             id=int(random.getrandbits(32)),
             parent_id=node.id,
@@ -304,62 +196,56 @@ def expand(
         nodes[child_node.id] = child_node
         edges[node.id].append((child_node.id, action))
 
-    logger.expand(node.id, tree.edges[node.id])
-
 
 def rollout(
-    config: types.MctsConfig[G, A],
-    logger: MctsLogger,
     node: types.Node[A],
+    config: types.MctsConfig[G, A],
+    walk_log: WalkLog,
     tree: t.Dict[int, t.List[types.Node[A]]],
-    take_action_mut: t.Callable[[G, A], t.Optional[G]],
     gamestate: G,
 ) -> types.ScoreVec:
     if config.rollout_policy is not None:
-        return config.rollout_policy(gamestate)
+        score_vec = config.rollout_policy(gamestate)
     else:
-        winning_player = simulate(
-            config, logger, node, tree, take_action_mut, gamestate
-        )
-        # gamestate has bene mutated by simulate
-        final_score = config.final_score and config.final_score(gamestate)
+        winning_player = simulate(config, walk_log, node, tree, gamestate)
         score_vec = (
-            final_score
-            if final_score is not None
+            config.get_final_score(gamestate)
+            if config.get_final_score is not None
             else {p: int(p == winning_player) for p in config.players}
         )
-        return score_vec
+    assert set(score_vec.keys()) == set(config.players)
+    return score_vec
 
 
 def simulate(
     config: types.MctsConfig[G, A],
-    logger: MctsLogger,
+    walk_log: WalkLog,
     node: types.Node[A],
     tree: t.Dict[int, t.List[types.Node[A]]],
-    take_action_mut: t.Callable[[G, A], t.Optional[G]],
     gamestate: G,
 ) -> P:
     # TODO: add decisive move heuristic
-    # TODO: use heuristic
     c = 0
     while (result := config.is_over(gamestate)) is None:
         if c >= MAX_STEPS:
             raise Exception(f"Simulate exceeded {MAX_STEPS} steps")
         action = random.choice(config.get_all_actions(gamestate))
-        take_action_mut(gamestate, action)
+        config.take_action_mut(gamestate, action)
+        walk_log.append({"event_type": "simulation-action", "action": action})
         c += 1
+    assert config.is_over(gamestate) is not None
     return result
 
 
 def backup(
-    config: types.MctsConfig,
-    logger: MctsLogger,
-    tree: types.Tree[G, A],
     node: types.Node,
     score_vec: types.ScoreVec,
+    config: types.MctsConfig,
+    walk_log: WalkLog,
+    tree: types.Tree[G, A],
     gamestate: G,
 ):
-    # assert config.is_over(gamestate)
+    """ Update node statistics """
     assert all(0 <= v <= 1 for v in score_vec.values())
     assert set(score_vec.keys()) == set(config.players)
     while node is not None:
@@ -370,22 +256,42 @@ def backup(
         node = tree.nodes.get(node.parent_id)
 
 
-@contextlib.contextmanager
-def action_logger(take_action_mut: t.Callable[[G, A], t.Optional[G]]):
-    log = []
-
-    def take_action_mut_with_log(gamestate, action):
-        log.append(action)
-        return take_action_mut(gamestate, action)
-
-    yield take_action_mut_with_log, log
-
-
-def undo_actions(
-    gamestate: G,
-    undo_action: t.Callable[[G, A], t.Optional[G]],
-    log: t.List[A],
+def restore_gamestate(
+    config: types.MctsConfig[G, A],
+    root_gamestate: G,
+    current_gamestate: G,
+    walk_log: WalkLog,
 ):
-    for action in reversed(log):
-        undo_action(gamestate, action)
-    return gamestate
+    if config.undo_action is not None:
+        actions = [
+            entry["action"]
+            for entry in walk_log
+            if entry["event_type"]
+            in ["tree-policy-action", "simulation-action"]
+        ]
+        for action in reversed(actions):
+            config.undo_action(current_gamestate, action)
+        return current_gamestate
+    else:
+        return copy.deepcopy(root_gamestate)
+
+
+def pick_best_action(tree: types.Tree[G, A], player: P):
+    root = tree.nodes[0]
+    child_action_pairs = (
+        (tree.nodes[child_id], action)
+        for (child_id, action) in tree.edges[root.id]
+    )
+
+    action_value_pairs = [
+        (action, child.score_vec[player] / float(child.times_visited))
+        for (child, action) in child_action_pairs
+        if child.times_visited > 0  # this shouldn't happen
+    ]
+
+    action, _ = max(action_value_pairs, key=lambda x: x[1])
+    return action
+
+
+def upload_to_redis(log):
+    pass

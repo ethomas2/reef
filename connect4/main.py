@@ -60,10 +60,9 @@ def play_game(agent1: Agent, agent2: Agent, output: t.Optional[t.IO] = None):
             print(fmt.format_gamestate(gamestate), file=output)
             print("\n", file=output)
         if (winner := is_over(gamestate)) is not None:
-            return winner
             if output:
                 print(f"Game Over. Winner {winner}", file=output)
-            break
+            return winner
 
         if agent.agent_type == "human":
             while True:

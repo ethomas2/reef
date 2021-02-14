@@ -50,9 +50,12 @@ def take_environment_action(gamestate, action: types.EnvironmentAction):
     return gamestate
 
 
-def take_player_action(gamestate, action):
+def take_player_action(
+    gamestate: types.GameState, player_action: types.PlayerAction
+):
     assert gamestate.player == "player"
     board = gamestate.board
+    action = player_action.action
     if action == "left":
         index_set = [get_indexes(row=r) for r in range(len(board))]
     elif action == "right":
@@ -192,7 +195,7 @@ def get_all_player_actions(
             board[r][c - 1] is None or board[r][c - 1] == board[r][c]
         ):
             actions.add("left")
-    return list(actions)
+    return [types.PlayerAction(action=a) for a in actions]
 
 
 def get_all_environment_actions(
@@ -219,3 +222,12 @@ def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
         )
     else:
         return random.choice(get_all_actions(gamestate))
+
+
+def encode_action(action: types.Action) -> str:
+    if isinstance(action, types.PlayerAction):
+        return f"player action: {action.action}"
+    elif isinstance(action, types.EnvironmentAction):
+        return f"environment action: {action.placement} {action.val}"
+    else:
+        assert False, f"Unexpected action type {action}"

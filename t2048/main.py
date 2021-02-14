@@ -15,6 +15,7 @@ from t2048.rules import (
     get_all_actions,
     get_final_score,
     rollout_policy,
+    encode_action,
 )
 
 # from connect4.heuristic import heuristic
@@ -23,7 +24,6 @@ import utils
 import engine.typesv1 as types
 from engine.mctsv1 import mcts_v1
 import connect4._types as c4types
-from engine.minimax import minimax
 
 
 AGENT_TYPES = [
@@ -108,7 +108,7 @@ def get_agent(agent_type: AgentType) -> Agent:
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
             while True:
-                inp = input(f"Choose direction (w,a,s,d): ").strip().lower()
+                inp = input("Choose direction (w,a,s,d): ").strip().lower()
 
                 INP_MAP = {"w": "up", "a": "left", "s": "down", "d": "right"}
                 if inp not in INP_MAP.keys():
@@ -128,6 +128,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             get_final_score=get_final_score,
             players=["player"],
             budget=mcts_budget,
+            encode_action=encode_action,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:

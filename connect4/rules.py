@@ -154,3 +154,8 @@ def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
     if len(actions) == 0:
         return None
     return random.choice(actions)
+
+
+def encode_action(action: types.Action) -> str:
+    return f"{action}"
+    pass

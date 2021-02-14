@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import math
 import random
 import time
@@ -10,17 +11,19 @@ import engine.typesv1 as types
 # import wandb
 
 
-G = t.TypeVar("G")
-A = t.TypeVar("A")
+G = t.TypeVar("G")  # gamestate
+A = t.TypeVar("A")  # action
 P = t.TypeVar("P")  # player
 WalkLog = t.List[t.Dict[str, t.Any]]
 
 MAX_STEPS = 10000
 
+ID_LENGTH = 32  # number of bits in a node id
+
 
 def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
     root = types.Node(
-        id=0,
+        id=(0).to_bytes(ID_LENGTH, "big"),
         parent_id=-1,
         times_visited=0,
         score_vec={p: 0 for p in config.players},
@@ -40,7 +43,7 @@ def mcts_v1(config: types.MctsConfig[G, A], root_gamestate: G) -> A:
         upload_to_redis(walk_log)
         nwalks += 1
 
-    action = pick_best_action(tree, root_gamestate.player)
+    action = pick_best_action(tree, root_gamestate.player, root.id)
 
     return action
 
@@ -180,8 +183,13 @@ def expand(
         return
 
     for action in config.get_all_actions(gamestate):
+        m = hashlib.md5()  # parent id
+        m.update(node.id)
+        m.update(config.encode_action(action).encode())
+        id = m.digest()
+
         child_node = types.Node(
-            id=int(random.getrandbits(64)),
+            id=id,
             parent_id=node.id,
             times_visited=0,
             score_vec={p: 0 for p in config.players},
@@ -278,8 +286,8 @@ def restore_gamestate(
         return copy.deepcopy(root_gamestate)
 
 
-def pick_best_action(tree: types.Tree[G, A], player: P):
-    root = tree.nodes[0]
+def pick_best_action(tree: types.Tree[G, A], player: P, root_id):
+    root = tree.nodes[root_id]
     child_action_pairs = (
         (tree.nodes[child_id], action)
         for (child_id, action) in tree.edges[root.id]

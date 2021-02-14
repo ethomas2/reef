@@ -16,6 +16,7 @@ from connect4.rules import (
     undo_action,
     get_all_actions,
     other_player,
+    encode_action,
 )
 from connect4.heuristic import heuristic
 from connect4 import fmt
@@ -149,6 +150,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             get_final_score=get_final_score,
             players=["X", "O"],
             budget=mcts_budget,
+            encode_action=encode_action,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
@@ -166,6 +168,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             budget=mcts_budget,
             heuristic_type="basic",
             heuristic=heuristic,
+            encode_action=encode_action,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
@@ -184,6 +187,7 @@ def get_agent(agent_type: AgentType) -> Agent:
             budget=mcts_budget,
             heuristic_type="pre-visit",
             heuristic=heuristic,
+            encode_action=encode_action,
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:

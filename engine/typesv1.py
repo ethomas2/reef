@@ -52,6 +52,7 @@ class MctsConfig(t.Generic[G, A]):
     is_over: t.Callable[[G], t.Optional[P]]
     get_final_score: t.Callable[[G], t.Optional[ScoreVec]]
     players: t.List[P]
+    encode_action: t.Callable[[A], str]
 
     # Optional args
 

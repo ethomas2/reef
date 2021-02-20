@@ -22,7 +22,8 @@ from t2048.rules import (
 from t2048 import fmt
 import utils
 import engine.typesv1 as types
-from engine.mctsv1 import mcts_v1
+from engine.mctsv1 import Engine
+
 import connect4._types as c4types
 
 
@@ -129,10 +130,13 @@ def get_agent(agent_type: AgentType) -> Agent:
             players=["player"],
             budget=mcts_budget,
             encode_action=encode_action,
+            redis_config=types.RedisConfig(host="localhost", port=6379, db=0),
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
-            return mcts_v1(config, gamestate)
+            engine = Engine(config)
+            _, action = engine.ponder(gamestate, 1)
+            return action
 
         return Agent(get_action=get_action, agent_type=agent_type)
 

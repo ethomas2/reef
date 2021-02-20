@@ -46,6 +46,13 @@ class Tree(t.Generic[G, A]):
 
 
 @dataclass
+class RedisConfig:
+    host: str
+    port: int
+    db: int
+
+
+@dataclass
 class MctsConfig(t.Generic[G, A]):
     take_action_mut: t.Callable[[G, A], t.Optional[G]]
     get_all_actions: t.Callable[[G], t.Iterable[A]]
@@ -58,6 +65,7 @@ class MctsConfig(t.Generic[G, A]):
 
     # maybe remove undo_action
 
+    redis_config: t.Optional[RedisConfig] = None
     rollout_policy: t.Callable[[G], ScoreVec] = None
     undo_action: t.Optional[t.Callable[[G, A], t.Optional[G]]] = None
     heuristic_type: t.Optional[str] = None

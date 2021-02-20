@@ -22,7 +22,7 @@ from connect4.heuristic import heuristic
 from connect4 import fmt
 import utils
 import engine.typesv1 as types
-from engine.mctsv1 import mcts_v1
+from engine.mctsv1 import Engine
 import connect4._types as c4types
 from engine.minimax import minimax
 
@@ -154,7 +154,9 @@ def get_agent(agent_type: AgentType) -> Agent:
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
-            return mcts_v1(config, gamestate)
+            eng = Engine(config)
+            _, action = eng.ponder(gamestate, nseconds=2)
+            return action
 
         return Agent(get_action=get_action, agent_type=agent_type)
     elif agent_type == "mcts-basich":
@@ -172,7 +174,9 @@ def get_agent(agent_type: AgentType) -> Agent:
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
-            return mcts_v1(config, gamestate)
+            eng = Engine(config)
+            _, action = eng.ponder(gamestate, nseconds=2)
+            return action
 
         return Agent(get_action=get_action, agent_type=agent_type)
 
@@ -191,7 +195,9 @@ def get_agent(agent_type: AgentType) -> Agent:
         )
 
         def get_action(gamestate: c4types.GameState) -> c4types.Action:
-            return mcts_v1(config, gamestate)
+            eng = Engine(config)
+            _, action = eng.ponder(gamestate, nseconds=2)
+            return action
 
         return Agent(get_action=get_action, agent_type=agent_type)
 

@@ -231,3 +231,7 @@ def encode_action(action: types.Action) -> str:
         return f"environment action: {action.placement} {action.val}"
     else:
         assert False, f"Unexpected action type {action}"
+
+
+def get_players():
+    return ["player"]

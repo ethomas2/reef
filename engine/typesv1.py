@@ -17,6 +17,8 @@ class HeuristicVal(t.NamedTuple):
 
 ScoreVec = t.Dict[P, float]
 
+WalkLog = t.List[t.Dict[str, t.Any]]
+
 # A node is not 1:1 with gamestate. A node is a series of actions from the
 # root. So two nodes can have the same gamestates if the sequence of actions to
 # the two nodes lead to the same gamestate
@@ -64,8 +66,6 @@ class MctsConfig(t.Generic[G, A]):
     # Optional args
 
     # maybe remove undo_action
-
-    redis_config: t.Optional[RedisConfig] = None
     rollout_policy: t.Callable[[G], ScoreVec] = None
     undo_action: t.Optional[t.Callable[[G, A], t.Optional[G]]] = None
     heuristic_type: t.Optional[str] = None
@@ -74,7 +74,6 @@ class MctsConfig(t.Generic[G, A]):
 
     # TODO: change budget to terminationconfig, allows time bank or thing where
     # final node has to be same as something
-    budget: float = 1.0
     decisive_moves_heuristic: bool = False
 
 

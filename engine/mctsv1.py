@@ -16,7 +16,6 @@ import engine.typesv1 as types
 G = t.TypeVar("G")  # gamestate
 A = t.TypeVar("A")  # action
 P = t.TypeVar("P")  # player
-WalkLog = t.List[t.Dict[str, t.Any]]
 
 MAX_STEPS = 10000
 
@@ -27,7 +26,7 @@ class Engine(t.Generic[G, A, P]):
     def __init__(
         self,
         config: types.MctsConfig[G, A],
-    ) -> t.Tuple[t.List[WalkLog], A]:
+    ) -> t.Tuple[t.List[types.WalkLog], A]:
         self.config = config
 
     # def ponder_for(self, gamestate: G, nseconds: float) -> A:
@@ -42,7 +41,7 @@ class Engine(t.Generic[G, A, P]):
         root_gamestate: G,
         nseconds: float
         # walk_batch: int,
-    ) -> t.Tuple[t.List[WalkLog], A]:
+    ) -> t.Tuple[t.List[types.WalkLog], A]:
         self.root_node = types.Node(
             id=(0).to_bytes(ID_LENGTH, "big"),
             parent_id=-1,
@@ -67,7 +66,7 @@ class Engine(t.Generic[G, A, P]):
 
         return walk_logs, action
 
-    def _walk(self) -> WalkLog:
+    def _walk(self) -> types.WalkLog:
         gamestate = copy.deepcopy(self.root_gamestate)
         walk_log = []  # walk log will be mutated
         node = self._tree_policy(walk_log, gamestate)
@@ -79,7 +78,7 @@ class Engine(t.Generic[G, A, P]):
 
     def _tree_policy(
         self,
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
         gamestate: G,
     ) -> types.Node[A]:
         nodes, edges = self.tree.nodes, self.tree.edges
@@ -130,7 +129,7 @@ class Engine(t.Generic[G, A, P]):
 
     def _expand(
         self,
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
         node: types.Node,
         gamestate: G,
     ):
@@ -185,7 +184,7 @@ class Engine(t.Generic[G, A, P]):
     def _rollout(
         self,
         node: types.Node[A],
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
         gamestate: G,
     ) -> types.ScoreVec:
         if self.config.rollout_policy is not None:
@@ -202,7 +201,7 @@ class Engine(t.Generic[G, A, P]):
 
     def _simulate(
         self,
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
         node: types.Node[A],
         gamestate: G,
     ) -> P:
@@ -223,7 +222,7 @@ class Engine(t.Generic[G, A, P]):
         node: types.Node,
         score_vec: types.ScoreVec,
         gamestate: G,
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
     ):
         """ Update node statistics """
         assert all(0 <= v <= 1 for v in score_vec.values())
@@ -238,7 +237,7 @@ class Engine(t.Generic[G, A, P]):
     def _restore_gamestate(
         self,
         current_gamestate: G,
-        walk_log: WalkLog,
+        walk_log: types.WalkLog,
     ):
         if self.config.undo_action is not None:
             actions = [

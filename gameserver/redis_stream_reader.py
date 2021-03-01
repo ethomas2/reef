@@ -9,11 +9,11 @@ class RedisStreamReader:
         self.r = r
         self.stream_pointers = collections.defaultdict(lambda: "0")
 
-    def read(self, stream_name: str):
+    def read(self, stream_name: str, block: t.Optional[int] = None):
         if isinstance(stream_name, str):
             stream_name = stream_name.encode()
         last_id = self.stream_pointers[stream_name]
-        result = self.r.xread({stream_name: last_id})
+        result = self.r.xread({stream_name: last_id}, block=block)
         item_ts_tuples = next(
             (
                 stream_items

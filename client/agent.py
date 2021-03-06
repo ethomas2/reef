@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass
 import json
 import queue
@@ -112,6 +113,7 @@ class EngineServerFarmClient(t.Generic[G, A]):
         self.agent_type = agent_type
         # TODO: launch redis
         # TODO: launch engine servers in ecs
+        self.procs = self._launch_engine_servers_local(n_engine_servers)
         self.rules = common.load_rules(game_type)
         self.game_type = game_type
         self.timeout = timeout
@@ -125,15 +127,17 @@ class EngineServerFarmClient(t.Generic[G, A]):
         self.pubsub = self.r.pubsub()
         self.pubsub.subscribe("actions")
 
+    def _launch_engine_servers_local(self, n_engine_servers: int):
+        return [
+            subprocess.Popen(["python", "engineserver/main.py"])
+            for _ in range(n_engine_servers)
+        ]
+
     def get_action(self, gamestate: G) -> A:
         """
         Send this gamestate to redis, wait <timeout> seconds and return
         whatever action ends up in redis
         """
-        # encoded_gamestate = self.rules.encode_gamestate(gamestate)
-        # import pdb
-
-        # pdb.set_trace()  # noqa: E702
         self.r.publish(
             "commands",
             json.dumps(

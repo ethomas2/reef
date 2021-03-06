@@ -1,3 +1,4 @@
+import json
 import random
 import typing as t
 import t2048._types as types
@@ -235,3 +236,12 @@ def encode_action(action: types.Action) -> str:
 
 def get_players():
     return ["player"]
+
+
+def encode_gamestate(gamestate: types.GameState) -> bytes:
+    return json.dumps(gamestate.__dict__).encode()
+
+
+def decode_gamestate(encoded_gamestate: bytes) -> types.GameState:
+    gs_as_json = json.loads(encoded_gamestate.decode())
+    return types.GameState(**gs_as_json)

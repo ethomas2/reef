@@ -73,7 +73,7 @@ def print_err(msg, exit=False):
 #################################### Redis ####################################
 
 
-def get_message(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
+def read_chan(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
     """
     Filter out messages that aren't of type "message". timeout of None
     means don't wait.
@@ -105,7 +105,7 @@ def get_message(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
                 )
 
 
-def publish(r: redis.Redis, channel: str, dc):
+def write_chan(r: redis.Redis, channel: str, dc):
     d = dc.__dict__
     d["dc_module"] = type(dc).__module__
     d["dc_name"] = type(dc).__name__

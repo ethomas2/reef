@@ -142,7 +142,7 @@ class EngineServerFarmClient(t.Generic[G, A]):
         Send this gamestate to redis, wait <timeout> seconds and return
         whatever action ends up in redis
         """
-        utils.publish(
+        utils.write_chan(
             self.r,
             "commands",
             ctypes.NewGamestate(
@@ -152,4 +152,4 @@ class EngineServerFarmClient(t.Generic[G, A]):
                 gamestate=gamestate.__dict__,
             ),
         )
-        return utils.get_message(self.pubsub)
+        return utils.read_chan(self.pubsub)

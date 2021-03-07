@@ -4,14 +4,17 @@
 # download tree updates every DOWNLOAD_TREE_UPDATES number of walks
 
 from queue import Queue, Empty
+import atexit
+import json
+import random
 import threading
 import typing as t
-import atexit
 
-import engine.typesv1 as eng_types
 from engine.mctsv1 import Engine
+from common.redis_stream_reader import RedisStreamReader
 import common.main as common
 import common.types as ctypes
+import engine.typesv1 as eng_types
 import utils
 
 import redis
@@ -25,10 +28,9 @@ N_WALK_BATCH = 5
 G = t.TypeVar("G")  # gamestate
 A = t.TypeVar("A")  # action
 P = t.TypeVar("P")  # action
-Data = t.Dict[str, t.Any]
 
 
-def serve(redis_config: eng_types.RedisConfig) -> A:
+def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
     """
     Take a gamestate, run until you get a stop command or a new gamestate
     """
@@ -45,7 +47,7 @@ def serve(redis_config: eng_types.RedisConfig) -> A:
 
     def listen_for_commands():
         while True:
-            msg = utils.get_message(pubsub)
+            msg = utils.read_chan(pubsub)
             command_queue.put(msg)
 
     command_thread = threading.Thread(
@@ -60,6 +62,7 @@ def serve(redis_config: eng_types.RedisConfig) -> A:
         None,
     )
 
+    rsr = RedisStreamReader(r)
     while True:
         try:
             command = (
@@ -86,10 +89,10 @@ def serve(redis_config: eng_types.RedisConfig) -> A:
             utils.print_err(f"unknown command_type {type(command)}\n{command}")
 
         if engine is not None:
-            walk_logs, best_move = engine.ponder(gamestate, N_WALK_BATCH)
-            upload_to_redis(walk_logs, r, gamestate_id)
-            download_from_redis()
-        utils.publish(r, "actions", best_move)
+            walk_logs, best_move = engine.ponder(gamestate, nseconds=1)
+            upload_to_redis(walk_logs, r, gamestate_id, engineserver_id)
+            consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
+        utils.write_chan(r, "actions", best_move)
 
 
 def parse_config(command: ctypes.NewGamestate) -> eng_types.MctsConfig:
@@ -117,24 +120,44 @@ def decode_gamestate(command: t.Dict[str, t.Any]) -> t.Tuple[G, int]:
     return gamestate, gamestate_id
 
 
+def try_json_dumps(v):
+    try:
+        return json.dumps(v)
+    except TypeError:
+        return v
+
+
 def upload_to_redis(
-    walk_logs: t.List[eng_types.WalkLog], r: redis.Redis, gamestate_id: int
+    walk_logs: t.List[eng_types.WalkLog],
+    r: redis.Redis,
+    gamestate_id: int,
+    engineserver_id: int,
 ):
     stream = f"gamestate-{gamestate_id}"
     print(f"upload_to_redis {stream=}")
     with r.pipeline() as pipe:
         for walk_log in walk_logs:
             for item in walk_log:
-                if item["event-type"] == "new-node":
-                    pipe.xadd(stream, item)
-                elif item["event-type"] == "walk-result":
-                    pipe.xadd(stream, item)
+                item2 = {k: try_json_dumps(v) for k, v in item.items()}
+                item2["engineserver_id"] = engineserver_id
+                if item2["event-type"] == "new-node":
+                    pipe.xadd(stream, item2)
+                elif item2["event-type"] == "walk-result":
+                    pipe.xadd(stream, item2)
         pipe.execute()
 
 
-def download_from_redis():
-    print("download_from_redis")
-    pass
+def consume_new_walk_logs(
+    rsr: RedisStreamReader,
+    gamestate_id: int,
+    engine: Engine,
+    engineserver_id: int,
+):
+    stream_name = f"gamestate-{gamestate_id}"
+    logs = rsr.read(stream_name)
+    engine.consume_walk_log(
+        [log for log in logs if log[b"engineserver_id"] != engineserver_id]
+    )
 
 
 if __name__ == "__main__":
@@ -143,4 +166,5 @@ if __name__ == "__main__":
         port=6379,
         db=0,
     )
-    serve(redis_config)
+    engineserver_id = random.randbytes(4)
+    serve(redis_config, engineserver_id)

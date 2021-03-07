@@ -66,6 +66,40 @@ class Engine(t.Generic[G, A, P]):
 
         return walk_logs, action
 
+    def consume_walk_log(self, walk_log: t.List[types.WalkLog]):
+        for item in walk_log:
+            # import pdb
+
+            # pdb.set_trace()  # noqa: E702
+            if item[b"event-type"] == "new-node":
+                if item[b"id"] in self.tree.nodes:
+                    continue
+                else:
+                    self._new_node(
+                        item[b"id"],
+                        item[b"parent_id"],
+                        self.config.decode_action(item[b"action"]),
+                    )
+
+            elif item[b"event-type"] == "walk-result":
+                raise NotImplementedError
+
+    def _new_node(self, id, parent_id, action, previsit_heuristic_val):
+        nodes, edges = self.tree.nodes, self.tree.edges
+        child_node = types.Node(
+            id=id,
+            parent_id=parent_id,
+            times_visited=0,
+            score_vec={p: 0 for p in self.config.players},
+            heuristic_val=previsit_heuristic_val,
+        )
+        assert (
+            child_node.id not in nodes
+        ), f"nnodes {len(self.tree.nodes)} id {child_node.id}"
+        nodes[child_node.id] = child_node
+        edges[parent_id].append((child_node.id, action))
+        return child_node
+
     def _walk(self) -> types.WalkLog:
         gamestate = copy.deepcopy(self.root_gamestate)
         walk_log = []  # walk log will be mutated
@@ -152,12 +186,11 @@ class Engine(t.Generic[G, A, P]):
             m.update(self.config.encode_action(action).encode())
             id = m.digest()
 
-            child_node = types.Node(
-                id=id,
-                parent_id=node.id,
-                times_visited=0,
-                score_vec={p: 0 for p in self.config.players},
-                heuristic_val=(
+            child_node = self._new_node(
+                id,
+                node.id,
+                action,
+                (
                     None
                     if self.config.heuristic_type is None
                     else types.HeuristicVal(
@@ -165,12 +198,7 @@ class Engine(t.Generic[G, A, P]):
                     )
                 ),
             )
-            assert (
-                child_node.id not in nodes
-            ), f"nnodes {len(self.tree.nodes)} id {child_node.id}"
 
-            nodes[child_node.id] = child_node
-            edges[node.id].append((child_node.id, action))
             walk_log.append(
                 {
                     "event-type": "new-node",
@@ -179,7 +207,6 @@ class Engine(t.Generic[G, A, P]):
                     "action": self.config.encode_action(action),
                 }
             )
-            # walk_log.append({"event-type": "new-edge", 'parent_id': child_node.parent_id})
 
     def _rollout(
         self,

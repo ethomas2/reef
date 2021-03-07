@@ -1,7 +1,6 @@
 import subprocess
 from dataclasses import dataclass
 import json
-import queue
 import random
 import threading
 import time
@@ -10,7 +9,6 @@ import typing as t
 import redis
 import redis.client
 
-from common.redis_stream_reader import RedisStreamReader
 from engine.mctsv1 import Engine
 import common.main as common
 import common.types as ctypes
@@ -128,38 +126,25 @@ class EngineServerFarmClient(t.Generic[G, A]):
         self.pubsub.subscribe("actions")
 
     def _launch_engine_servers_local(self, n_engine_servers: int):
-        return [
-            subprocess.Popen(["python", "engineserver/main.py"])
-            for _ in range(n_engine_servers)
-        ]
+        pass
+        # return [
+        #     subprocess.Popen(["python", "engineserver/main.py"])
+        #     for _ in range(n_engine_servers)
+        # ]
 
     def get_action(self, gamestate: G) -> A:
         """
         Send this gamestate to redis, wait <timeout> seconds and return
         whatever action ends up in redis
         """
-        self.r.publish(
+        utils.publish(
+            self.r,
             "commands",
-            json.dumps(
-                ctypes.NewGamestate(
-                    command_type="new-gamestate",
-                    game_type=self.game_type,
-                    gamestate_id=random.getrandbits(64),
-                    gamestate=gamestate.__dict__,
-                ).__dict__
+            ctypes.NewGamestate(
+                command_type="new-gamestate",
+                game_type=self.game_type,
+                gamestate_id=random.getrandbits(64),
+                gamestate=gamestate.__dict__,
             ),
         )
-        return _get_message(self.pubsub)
-
-
-def _get_message(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
-    end = time.time() + timeout if timeout is not None else None
-    while end is None or time.time() < end:
-        msg = pubsub.get_message(
-            timeout=(end - time.time() if end is not None else None)
-        )
-        if msg is None:
-            return msg
-        elif msg["type"] == "message":
-            return msg
-    return None
+        return utils.get_message(self.pubsub)

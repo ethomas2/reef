@@ -1,6 +1,11 @@
+import importlib
 import dataclasses
+import json
 import math
+import sys
 import typing as t
+
+import redis.client
 
 
 def assert_never(msg: str) -> t.NoReturn:
@@ -57,3 +62,51 @@ def copy(obj):
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
+
+
+def print_err(msg, exit=False):
+    print(f"\033[31m{msg}\033[m")
+    if exit:
+        sys.exit(1)
+
+
+#################################### Redis ####################################
+
+
+def get_message(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
+    """
+    Filter out messages that aren't of type "message". timeout of None
+    means don't wait.
+
+    Serialization stolen from https://stackoverflow.com/a/8790232
+    """
+    if timeout is not None:
+        return pubsub.get_message(
+            ignore_subscribe_messages=True,
+            timeout=timeout,
+        )
+    else:
+        while True:
+            msg = pubsub.get_message(
+                ignore_subscribe_messages=True,
+                timeout=10,
+            )
+            if msg is not None:
+                data = json.loads(msg["data"])
+                klass = getattr(
+                    importlib.import_module(data["dc_module"]), data["dc_name"]
+                )
+                return klass(
+                    **{
+                        k: v
+                        for k, v in data.items()
+                        if k not in ["dc_module", "dc_name"]
+                    }
+                )
+
+
+def publish(r: redis.Redis, channel: str, dc):
+    d = dc.__dict__
+    d["dc_module"] = type(dc).__module__
+    d["dc_name"] = type(dc).__name__
+    r.publish(channel, json.dumps(d))

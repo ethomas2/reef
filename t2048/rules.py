@@ -242,6 +242,8 @@ def encode_gamestate(gamestate: types.GameState) -> bytes:
     return json.dumps(gamestate.__dict__).encode()
 
 
-def decode_gamestate(encoded_gamestate: bytes) -> types.GameState:
-    gs_as_json = json.loads(encoded_gamestate.decode())
+Json = t.Dict[str, t.Any]
+
+
+def decode_gamestate(gs_as_json: Json) -> types.GameState:
     return types.GameState(**gs_as_json)

@@ -197,6 +197,7 @@ class Engine(t.Generic[G, A, P]):
                 else {p: int(p == winning_player) for p in self.config.players}
             )
         assert set(score_vec.keys()) == set(self.config.players)
+        walk_log.append({"event-type": "walk-result", "score": score_vec})
         return score_vec
 
     def _simulate(

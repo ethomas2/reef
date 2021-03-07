@@ -6,6 +6,7 @@
 from queue import Queue, Empty
 import threading
 import typing as t
+import atexit
 
 import engine.typesv1 as eng_types
 from engine.mctsv1 import Engine
@@ -33,6 +34,10 @@ def serve(redis_config: eng_types.RedisConfig) -> A:
     """
 
     r = redis.Redis(**redis_config.__dict__)
+    atexit.register(
+        r.flushall
+    )  # ideally should wait until all enginservers die
+
     pubsub = r.pubsub()
     pubsub.subscribe("commands")
 
@@ -116,17 +121,19 @@ def upload_to_redis(
     walk_logs: t.List[eng_types.WalkLog], r: redis.Redis, gamestate_id: int
 ):
     stream = f"gamestate-{gamestate_id}"
+    print(f"upload_to_redis {stream=}")
     with r.pipeline() as pipe:
         for walk_log in walk_logs:
             for item in walk_log:
                 if item["event-type"] == "new-node":
                     pipe.xadd(stream, item)
                 elif item["event-type"] == "walk-result":
-                    pipe.xadd(stream, "walk result")
+                    pipe.xadd(stream, item)
         pipe.execute()
 
 
 def download_from_redis():
+    print("download_from_redis")
     pass
 
 

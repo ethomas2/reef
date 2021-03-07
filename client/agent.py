@@ -47,6 +47,11 @@ class Agent(t.Generic[G, A, P]):
 def get_agent(
     agent_type: AgentType, game_type: str, mcts_budget=1, n_engine_servers=2
 ) -> Agent:
+    # TODO (remove): Debug. Random.seed on the client side
+    import random
+
+    random.seed(0)
+
     rules = common.load_rules(game_type)
 
     config = eng_types.MctsConfig(

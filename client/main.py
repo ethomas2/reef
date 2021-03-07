@@ -11,19 +11,6 @@ import common.main as common
 import utils
 
 
-def new_gamestate(r: redis.Redis, game_type: str):
-    rules = common.load_rules(game_type)
-    r.xadd(
-        "commands",
-        {
-            "command_type": "new-gamestate",
-            "gamestate": rules.init_game(),
-            "gamestate_id": 1,
-            "game_type": game_type,
-        },
-    )
-
-
 def play_game(
     agents: t.List[Agent], game_type: str, output: t.Optional[t.IO] = None
 ):

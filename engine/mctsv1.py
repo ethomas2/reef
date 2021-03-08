@@ -26,22 +26,11 @@ class Engine(t.Generic[G, A, P]):
     def __init__(
         self,
         config: types.MctsConfig[G, A],
+        gamestate: G,
     ) -> t.Tuple[t.List[types.WalkLog], A]:
         self.config = config
+        self.root_gamestate = gamestate
 
-    # def ponder_for(self, gamestate: G, nseconds: float) -> A:
-    #     end = time.time() + nseconds
-
-    #     for _ in self.ponder(gamestate, nwalks=20):
-    #         if time.time() > end:
-    #             return action
-
-    def ponder(
-        self,
-        root_gamestate: G,
-        nseconds: float
-        # walk_batch: int,
-    ) -> t.Tuple[t.List[types.WalkLog], A]:
         self.root_node = types.Node(
             id=(0).to_bytes(ID_LENGTH, "big"),
             parent_id=-1,
@@ -52,25 +41,24 @@ class Engine(t.Generic[G, A, P]):
             nodes={self.root_node.id: self.root_node}, edges={}
         )
 
-        self.root_gamestate = root_gamestate
+    def ponder(
+        self,
+        n_walks: int,
+    ) -> t.Tuple[t.List[types.WalkLog], A]:
 
         walk_logs = []
-        end = time.time() + nseconds
-        while time.time() < end:
+        for _ in range(n_walks):
             walk_log = self._walk()
             walk_logs.append(walk_log)
 
         action = self._pick_best_action(
-            self.tree, root_gamestate.player, self.root_node.id
+            self.tree, self.root_gamestate.player, self.root_node.id
         )
 
         return walk_logs, action
 
-    def consume_walk_log(self, walk_log: t.List[types.WalkLog]):
+    def consume_walk_log(self, walk_log: types.WalkLog):
         for item in walk_log:
-            # import pdb
-
-            # pdb.set_trace()  # noqa: E702
             if item[b"event-type"] == "new-node":
                 if item[b"id"] in self.tree.nodes:
                     continue
@@ -337,26 +325,3 @@ def _ucb_with_simple_heuristic(
     # assert self.config.heuristic_type == "basic"
     # assert self.config.heuristic is not None
     return _ucb_basic(C, tree, node, player) + node.heuristic
-
-
-# import sys
-
-
-# def info(type, value, tb):
-#     # see https://stackoverflow.com/a/242531
-#     if hasattr(sys, "ps1") or not sys.stderr.isatty():
-#         # we are in interactive mode or we don't have a tty-like
-#         # device, so we call the default hook
-#         sys.__excepthook__(type, value, tb)
-#     else:
-#         import traceback, pdb
-
-#         # we are NOT in interactive mode, print the exception...
-#         traceback.print_exception(type, value, tb)
-#         print
-#         # ...then start the debugger in post-mortem mode.
-#         # pdb.pm() # deprecated
-#         pdb.post_mortem(tb)  # more "modern"
-
-
-# sys.excepthook = info

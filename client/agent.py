@@ -152,4 +152,5 @@ class EngineServerFarmClient(t.Generic[G, A]):
                 gamestate=gamestate.__dict__,
             ),
         )
+        time.sleep(self.timeout)
         return utils.read_chan(self.pubsub)

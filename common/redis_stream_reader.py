@@ -17,6 +17,7 @@ class RedisStreamReader:
         last_id = self.stream_pointers[stream_name]
 
         result = self.r.xread({stream_name: last_id}, block=block)
+
         # result looks like this
         # [
         #   [
@@ -39,7 +40,7 @@ class RedisStreamReader:
         #   [(b'1615142762573-0', {b'key': b'val'}),
         #    (b'1615142830679-0', {b'key': b'val2'})]
         if ts_item_tuples is None or ts_item_tuples == []:
-            return None
+            return []
 
         self.stream_pointers[stream_name] = [
             ts for ts, item in ts_item_tuples

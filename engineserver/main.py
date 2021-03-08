@@ -8,6 +8,7 @@ import atexit
 import json
 import random
 import threading
+import time
 import typing as t
 
 from engine.mctsv1 import Engine
@@ -22,7 +23,7 @@ import redis
 
 ID_LENGTH = 32  # number of bits in a node id
 
-N_WALK_BATCH = 5
+BUDGET = 2
 
 
 G = t.TypeVar("G")  # gamestate
@@ -71,7 +72,7 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
                 else command_queue.get(block=False)
             )
         except Empty:
-            pass
+            command = None
 
         if isinstance(command, ctypes.NewGamestate):
             rules = common.load_rules(command.game_type)
@@ -80,19 +81,21 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
                 command.gamestate_id,
                 parse_config(command) or config,
             )
-            engine = Engine(config)
+            engine = Engine(config, gamestate)
         elif isinstance(command, ctypes.NewConfig):
             utils.print_err("Command NewConfig is unimplemented")
         elif isinstance(command, ctypes.Stop):
             gamestate = None
+        elif command is None:
+            pass
         else:
             utils.print_err(f"unknown command_type {type(command)}\n{command}")
 
         if engine is not None:
-            walk_logs, best_move = engine.ponder(gamestate, nseconds=1)
+            walk_logs, best_move = engine.ponder(n_walks=100)
             upload_to_redis(walk_logs, r, gamestate_id, engineserver_id)
             consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
-        utils.write_chan(r, "actions", best_move)
+            utils.write_chan(r, "actions", best_move)
 
 
 def parse_config(command: ctypes.NewGamestate) -> eng_types.MctsConfig:
@@ -121,10 +124,9 @@ def decode_gamestate(command: t.Dict[str, t.Any]) -> t.Tuple[G, int]:
 
 
 def try_json_dumps(v):
-    try:
+    if isinstance(v, dict):
         return json.dumps(v)
-    except TypeError:
-        return v
+    return v
 
 
 def upload_to_redis(
@@ -134,7 +136,6 @@ def upload_to_redis(
     engineserver_id: int,
 ):
     stream = f"gamestate-{gamestate_id}"
-    print(f"upload_to_redis {stream=}")
     with r.pipeline() as pipe:
         for walk_log in walk_logs:
             for item in walk_log:
@@ -144,6 +145,12 @@ def upload_to_redis(
                     pipe.xadd(stream, item2)
                 elif item2["event-type"] == "walk-result":
                     pipe.xadd(stream, item2)
+                elif item2["event-type"] == "take-action":
+                    pass
+                else:
+                    utils.assert_never(
+                        f"unkown event-type {item2['event-type']}"
+                    )
         pipe.execute()
 
 

@@ -94,9 +94,13 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
         if engine is not None:
             walk_logs, best_move = engine.ponder(n_walks=100)
             print("tree len", len(engine.tree.nodes))
-            upload_to_redis(walk_logs, r, gamestate_id, engineserver_id)
+            broadcast_walk_logs(walk_logs, r, gamestate_id, engineserver_id)
             consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
-            utils.write_chan(r, "actions", best_move)
+            utils.write_chan(
+                r,
+                "actions",
+                {"gamestate_id": gamestate_id, "best_move": best_move},
+            )
 
 
 def parse_config(command: ctypes.NewGamestate) -> eng_types.MctsConfig:
@@ -131,7 +135,7 @@ def try_json_dumps(v):
     return v
 
 
-def upload_to_redis(
+def broadcast_walk_logs(
     walk_logs: t.List[eng_types.WalkLog],
     r: redis.Redis,
     gamestate_id: int,
@@ -142,15 +146,15 @@ def upload_to_redis(
         for walk_log in walk_logs:
             for item in walk_log:
                 if item["event-type"] == "new-node":
-                    pipe.xadd(
+                    utils.write_stream(
                         stream,
+                        pipe,
                         {
                             "engineserver_id": engineserver_id,
-                            "item": json.dumps(item),
+                            "item": item,
                         },
                     )
                 elif item["event-type"] == "walk-result":
-                    # pipe.xadd(stream, encoded)
                     pass
                 elif item["event-type"] == "take-action":
                     pass
@@ -170,9 +174,9 @@ def consume_new_walk_logs(
     stream_name = f"gamestate-{gamestate_id}"
     logs = rsr.read(stream_name)
     consumable_logs = [
-        json.loads(log[b"item"])
+        log["item"]
         for log in logs
-        if log[b"engineserver_id"] != engineserver_id
+        if log["engineserver_id"] != engineserver_id
     ]
 
     engine.consume_walk_log(consumable_logs)
@@ -184,5 +188,5 @@ if __name__ == "__main__":
         port=6379,
         db=0,
     )
-    engineserver_id = random.randbytes(4)
+    engineserver_id = int.from_bytes(random.randbytes(4), "big")
     serve(redis_config, engineserver_id)

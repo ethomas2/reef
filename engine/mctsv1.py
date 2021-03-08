@@ -68,7 +68,7 @@ class Engine(t.Generic[G, A, P]):
                     self._new_node(
                         id=item["id"],
                         parent_id=item["parent_id"],
-                        action=self.config.decode_action(item["action"]),
+                        action=item["action"],
                     )
 
             elif item["event-type"] == "walk-result":
@@ -76,7 +76,7 @@ class Engine(t.Generic[G, A, P]):
                 # raise NotImplementedError
             else:
                 utils.assert_never(
-                    f"Unknown walk_log event-type {len(item[b'event-type'])}"
+                    f"Unknown walk_log event-type {item['event-type']}"
                 )
 
     def _new_node(self, id, parent_id, action, previsit_heuristic_val=None):
@@ -205,7 +205,7 @@ class Engine(t.Generic[G, A, P]):
                     "event-type": "new-node",
                     "id": child_node.id,
                     "parent_id": child_node.parent_id,
-                    "action": self.config.encode_action(action),
+                    "action": action,
                 }
             )
 

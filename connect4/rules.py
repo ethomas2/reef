@@ -157,5 +157,4 @@ def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
 
 
 def encode_action(action: types.Action) -> str:
-    return f"{action}"
-    pass
+    raise NotImplementedError

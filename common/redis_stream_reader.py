@@ -2,6 +2,7 @@ import redis
 
 import collections
 import typing as t
+import utils
 
 
 class RedisStreamReader:
@@ -16,37 +17,13 @@ class RedisStreamReader:
             stream_name = stream_name.encode()
         last_id = self.stream_pointers[stream_name]
 
-        result = self.r.xread({stream_name: last_id}, block=block)
-
-        # result looks like this
-        # [
-        #   [
-        #     b'stream_name', [
-        #       (b'1615142762573-0', {b'key': b'val'}),
-        #       (b'1615142830679-0', {b'key': b'val2'})]
-        #   ]
-        # ]
-        # we're only reading from one stream, the outer array is of length 1
-
-        ts_item_tuples = next(
-            (
-                stream_items
-                for result_stream_name, stream_items in result
-                if result_stream_name == stream_name
-            ),
-            None,
+        ts_item_tuples = utils.read_stream(
+            stream_name, self.r, last_id, block=block
         )
-        # ts_item_tuples looks like
-        #   [(b'1615142762573-0', {b'key': b'val'}),
-        #    (b'1615142830679-0', {b'key': b'val2'})]
-        if ts_item_tuples is None or ts_item_tuples == []:
-            return []
 
-        self.stream_pointers[stream_name] = [
-            ts for ts, item in ts_item_tuples
-        ][-1]
-        items = [item for ts, item in ts_item_tuples]
-        return items
+        self.stream_pointers[stream_name] = ts_item_tuples[-1][0]
+
+        return [item for (ts, item) in ts_item_tuples]
 
 
 if __name__ == "__main__":

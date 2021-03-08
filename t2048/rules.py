@@ -57,6 +57,8 @@ def take_player_action(
 ):
     assert gamestate.player == "player"
     board = gamestate.board
+    if isinstance(player_action, dict):
+        print(player_action)
     action = player_action.action
     if action == "left":
         index_set = [get_indexes(row=r) for r in range(len(board))]

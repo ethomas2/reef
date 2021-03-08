@@ -151,7 +151,7 @@ class EngineServerFarmClient(t.Generic[G, A]):
         Send this gamestate to redis, wait <timeout> seconds and return
         whatever action ends up in redis
         """
-        gamestate_id = (random.getrandbits(64),)
+        gamestate_id = random.getrandbits(64)
         utils.write_chan(
             self.r,
             "commands",
@@ -162,7 +162,14 @@ class EngineServerFarmClient(t.Generic[G, A]):
                 gamestate=gamestate.__dict__,
             ),
         )
-        actions = utils.read_all_from_chan(self.pubsub, self.timeout)
+        action_chan_messages = utils.read_all_from_chan(
+            self.pubsub, self.timeout
+        )
+        actions = [
+            a["best_move"]
+            for a in action_chan_messages
+            if a["gamestate_id"] == gamestate_id
+        ]
         assert (
             len(actions) > 0
         ), f"No engineserver responded with actions for gamestate id {gamestate_id}"

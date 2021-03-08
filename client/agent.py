@@ -1,7 +1,8 @@
-import subprocess
 from dataclasses import dataclass
+import atexit
 import json
 import random
+import subprocess
 import threading
 import time
 import typing as t
@@ -117,7 +118,7 @@ class EngineServerFarmClient(t.Generic[G, A]):
         self.agent_type = agent_type
         # TODO: launch redis
         # TODO: launch engine servers in ecs
-        self.procs = self._launch_engine_servers_local(n_engine_servers)
+        # self.procs = self._launch_engine_servers_local(n_engine_servers)
         self.rules = common.load_rules(game_type)
         self.game_type = game_type
         self.timeout = timeout
@@ -127,31 +128,43 @@ class EngineServerFarmClient(t.Generic[G, A]):
             port=6379,
             db=0,
         )
+        self.r.flushall()
 
         self.pubsub = self.r.pubsub()
         self.pubsub.subscribe("actions")
 
     def _launch_engine_servers_local(self, n_engine_servers: int):
-        pass
-        # return [
-        #     subprocess.Popen(["python", "engineserver/main.py"])
-        #     for _ in range(n_engine_servers)
-        # ]
+        procs = [
+            subprocess.Popen(["python", "engineserver/main.py"])
+            for _ in range(n_engine_servers)
+        ]
+
+        def killall():
+            for p in procs:
+                p.kill()
+
+        atexit.register(killall)
+        return procs
 
     def get_action(self, gamestate: G) -> A:
         """
         Send this gamestate to redis, wait <timeout> seconds and return
         whatever action ends up in redis
         """
+        gamestate_id = (random.getrandbits(64),)
         utils.write_chan(
             self.r,
             "commands",
             ctypes.NewGamestate(
                 command_type="new-gamestate",
                 game_type=self.game_type,
-                gamestate_id=random.getrandbits(64),
+                gamestate_id=gamestate_id,
                 gamestate=gamestate.__dict__,
             ),
         )
-        time.sleep(self.timeout)
-        return utils.read_chan(self.pubsub)
+        actions = utils.read_all_from_chan(self.pubsub, self.timeout)
+        assert (
+            len(actions) > 0
+        ), f"No engineserver responded with actions for gamestate id {gamestate_id}"
+        return actions[-1]
+        # return utils.read_chan(self.pubsub)

@@ -106,7 +106,7 @@ if __name__ == "__main__":
             )
 
         default_config = {
-            "mcts_budget": 5,
+            "mcts_budget": 2,
             "n_engine_servers": 2,
         }
         agents = [

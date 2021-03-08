@@ -1,3 +1,4 @@
+import time
 import importlib
 import dataclasses
 import json
@@ -75,15 +76,17 @@ def print_err(msg, exit=False):
 
 def read_chan(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
     """
-    Filter out messages that aren't of type "message". timeout of None
-    means don't wait.
+    Filter out messages that aren't of type "message". timeout=None means block
+    (wait until there's a message)
 
     Serialization stolen from https://stackoverflow.com/a/8790232
     """
     if timeout is not None:
-        return pubsub.get_message(
-            ignore_subscribe_messages=True,
-            timeout=timeout,
+        return deserialize(
+            pubsub.get_message(
+                ignore_subscribe_messages=True,
+                timeout=timeout,
+            )
         )
     else:
         while True:
@@ -105,8 +108,37 @@ def read_chan(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
                 )
 
 
+def read_all_from_chan(pubsub: redis.client.PubSub, timeout: int):
+    """
+    Read from the chan from <teimout> seconds and return everything read
+    """
+    messages = []
+    end = time.time() + timeout
+    while time.time() < end:
+        msg = read_chan(pubsub, max(end - time.time(), 0))
+        if msg is not None:
+            messages.append(msg)
+    return messages
+
+
 def write_chan(r: redis.Redis, channel: str, dc):
+    r.publish(channel, serialize(dc))
+
+
+def serialize(dc):
     d = dc.__dict__
     d["dc_module"] = type(dc).__module__
     d["dc_name"] = type(dc).__name__
-    r.publish(channel, json.dumps(d))
+    return json.dumps(d)
+
+
+def deserialize(msg):
+    if msg is None:
+        return None
+    data = json.loads(msg["data"])
+    klass = getattr(
+        importlib.import_module(data["dc_module"]), data["dc_name"]
+    )
+    return klass(
+        **{k: v for k, v in data.items() if k not in ["dc_module", "dc_name"]}
+    )

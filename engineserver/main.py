@@ -93,6 +93,7 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
 
         if engine is not None:
             walk_logs, best_move = engine.ponder(n_walks=100)
+            print("tree len", len(engine.tree.nodes))
             upload_to_redis(walk_logs, r, gamestate_id, engineserver_id)
             consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
             utils.write_chan(r, "actions", best_move)
@@ -111,6 +112,7 @@ def parse_config(command: ctypes.NewGamestate) -> eng_types.MctsConfig:
         get_final_score=rules.get_final_score,
         players=["player"],
         encode_action=rules.encode_action,
+        decode_action=rules.decode_action,
     )
 
 
@@ -162,9 +164,11 @@ def consume_new_walk_logs(
 ):
     stream_name = f"gamestate-{gamestate_id}"
     logs = rsr.read(stream_name)
-    engine.consume_walk_log(
-        [log for log in logs if log[b"engineserver_id"] != engineserver_id]
-    )
+    consumable_logs = [
+        log for log in logs if log[b"engineserver_id"] != engineserver_id
+    ]
+
+    engine.consume_walk_log(consumable_logs)
 
 
 if __name__ == "__main__":

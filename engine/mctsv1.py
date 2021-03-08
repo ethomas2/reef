@@ -8,6 +8,7 @@ import typing as t
 import redis
 
 import engine.typesv1 as types
+import utils
 
 
 # import wandb
@@ -59,20 +60,28 @@ class Engine(t.Generic[G, A, P]):
 
     def consume_walk_log(self, walk_log: types.WalkLog):
         for item in walk_log:
-            if item[b"event-type"] == "new-node":
+            if item[b"event-type"] == b"new-node":
                 if item[b"id"] in self.tree.nodes:
                     continue
                 else:
                     self._new_node(
-                        item[b"id"],
-                        item[b"parent_id"],
-                        self.config.decode_action(item[b"action"]),
+                        id=item[b"id"],
+                        parent_id=item[b"parent_id"],
+                        action=self.config.decode_action(item[b"action"]),
                     )
 
-            elif item[b"event-type"] == "walk-result":
-                raise NotImplementedError
+            elif item[b"event-type"] == b"walk-result":
+                pass
+                # raise NotImplementedError
+            else:
+                import pdb
 
-    def _new_node(self, id, parent_id, action, previsit_heuristic_val):
+                pdb.set_trace()  # noqa: E702
+                utils.assert_never(
+                    f"Unknown walk_log event-type {len(item[b'event-type'])}"
+                )
+
+    def _new_node(self, id, parent_id, action, previsit_heuristic_val=None):
         nodes, edges = self.tree.nodes, self.tree.edges
         child_node = types.Node(
             id=id,
@@ -160,9 +169,8 @@ class Engine(t.Generic[G, A, P]):
         children already (i.e. called once per node. Different definition than
         definition of expand in wikipedia
         """
-        nodes, edges = self.tree.nodes, self.tree.edges
 
-        assert edges.get(node.id) is None
+        assert self.tree.edges.get(node.id) is None
         self.tree.edges[node.id] = []
 
         if self.config.is_over(gamestate) is not None:

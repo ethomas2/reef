@@ -1,8 +1,9 @@
+import itertools
 import json
 import random
-import typing as t
 import t2048._types as types
-import itertools
+import typing as t
+import utils
 
 
 def init_game() -> types.GameState:
@@ -227,11 +228,37 @@ def get_random_action(gamestate: types.GameState) -> t.Optional[types.Action]:
 
 def encode_action(action: types.Action) -> str:
     if isinstance(action, types.PlayerAction):
-        return f"player action: {action.action}"
+        # return f"player action: {action.action}"
+        return json.dumps(
+            {
+                "type": "player-action",
+                "action": action.action,
+            }
+        )
     elif isinstance(action, types.EnvironmentAction):
-        return f"environment action: {action.placement} {action.val}"
+        # return f"environment action: {action.placement} {action.val}"
+        return json.dumps(
+            {
+                "type": "environment-action",
+                "action": (action.placement, action.val),
+            }
+        )
     else:
-        assert False, f"Unexpected action type {action}"
+        utils.assert_never(f"Unexpected action type {action}")
+
+
+def decode_action(encoded: str) -> types.Action:
+    data = json.loads(encoded)
+    if data["type"] == "player-action":
+        return types.PlayerAction(action=data["action"])
+    elif data["type"] == "environment-action":
+        placement, val = data["action"]
+        return types.EnvironmentAction(
+            placement=placement,
+            val=val,
+        )
+    else:
+        utils.assert_never(f"Unexpected action type {data['type']}")
 
 
 def get_players():

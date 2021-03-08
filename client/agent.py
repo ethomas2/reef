@@ -61,6 +61,7 @@ def get_agent(
         get_final_score=rules.get_final_score,
         players=rules.get_players(),
         encode_action=rules.encode_action,
+        decode_action=rules.decode_action,
     )
 
     if agent_type == "random":

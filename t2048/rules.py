@@ -233,7 +233,8 @@ def encode_action(action: types.Action) -> str:
             {
                 "type": "player-action",
                 "action": action.action,
-            }
+            },
+            sort_keys=True,
         )
     elif isinstance(action, types.EnvironmentAction):
         # return f"environment action: {action.placement} {action.val}"
@@ -241,7 +242,8 @@ def encode_action(action: types.Action) -> str:
             {
                 "type": "environment-action",
                 "action": (action.placement, action.val),
-            }
+            },
+            sort_keys=True,
         )
     else:
         utils.assert_never(f"Unexpected action type {action}")

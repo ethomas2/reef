@@ -141,17 +141,22 @@ def upload_to_redis(
     with r.pipeline() as pipe:
         for walk_log in walk_logs:
             for item in walk_log:
-                item2 = {k: try_json_dumps(v) for k, v in item.items()}
-                item2["engineserver_id"] = engineserver_id
-                if item2["event-type"] == "new-node":
-                    pipe.xadd(stream, item2)
-                elif item2["event-type"] == "walk-result":
-                    pipe.xadd(stream, item2)
-                elif item2["event-type"] == "take-action":
+                if item["event-type"] == "new-node":
+                    pipe.xadd(
+                        stream,
+                        {
+                            "engineserver_id": engineserver_id,
+                            "item": json.dumps(item),
+                        },
+                    )
+                elif item["event-type"] == "walk-result":
+                    # pipe.xadd(stream, encoded)
+                    pass
+                elif item["event-type"] == "take-action":
                     pass
                 else:
                     utils.assert_never(
-                        f"unkown event-type {item2['event-type']}"
+                        f"unkown event-type {item['event-type']}"
                     )
         pipe.execute()
 
@@ -165,11 +170,35 @@ def consume_new_walk_logs(
     stream_name = f"gamestate-{gamestate_id}"
     logs = rsr.read(stream_name)
     consumable_logs = [
-        log for log in logs if log[b"engineserver_id"] != engineserver_id
+        json.loads(log[b"item"])
+        for log in logs
+        if log[b"engineserver_id"] != engineserver_id
     ]
 
     engine.consume_walk_log(consumable_logs)
 
+
+# import sys
+
+
+# def info(type, value, tb):
+#     # see https://stackoverflow.com/a/242531
+#     if hasattr(sys, "ps1") or not sys.stderr.isatty():
+#         # we are in interactive mode or we don't have a tty-like
+#         # device, so we call the default hook
+#         sys.__excepthook__(type, value, tb)
+#     else:
+#         import traceback, pdb
+
+#         # we are NOT in interactive mode, print the exception...
+#         traceback.print_exception(type, value, tb)
+#         print
+#         # ...then start the debugger in post-mortem mode.
+#         # pdb.pm() # deprecated
+#         pdb.post_mortem(tb)  # more "modern"
+
+
+# sys.excepthook = info
 
 if __name__ == "__main__":
     redis_config = eng_types.RedisConfig(

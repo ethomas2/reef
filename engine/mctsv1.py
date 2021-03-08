@@ -20,7 +20,8 @@ P = t.TypeVar("P")  # player
 
 MAX_STEPS = 10000
 
-ID_LENGTH = 32  # number of bits in a node id
+ID_LENGTH = 4  # number of bytes in a node id
+assert ID_LENGTH <= 20, "ID_LENGTH must be <= the size of an md5 hash (20)"
 
 
 class Engine(t.Generic[G, A, P]):
@@ -33,7 +34,7 @@ class Engine(t.Generic[G, A, P]):
         self.root_gamestate = gamestate
 
         self.root_node = types.Node(
-            id=(0).to_bytes(ID_LENGTH, "big"),
+            id=0,
             parent_id=-1,
             times_visited=0,
             score_vec={p: 0 for p in self.config.players},
@@ -60,28 +61,29 @@ class Engine(t.Generic[G, A, P]):
 
     def consume_walk_log(self, walk_log: types.WalkLog):
         for item in walk_log:
-            if item[b"event-type"] == b"new-node":
-                if item[b"id"] in self.tree.nodes:
+            if item["event-type"] == "new-node":
+                if item["id"] in self.tree.nodes:
                     continue
                 else:
                     self._new_node(
-                        id=item[b"id"],
-                        parent_id=item[b"parent_id"],
-                        action=self.config.decode_action(item[b"action"]),
+                        id=item["id"],
+                        parent_id=item["parent_id"],
+                        action=self.config.decode_action(item["action"]),
                     )
 
-            elif item[b"event-type"] == b"walk-result":
+            elif item["event-type"] == "walk-result":
                 pass
                 # raise NotImplementedError
             else:
-                import pdb
-
-                pdb.set_trace()  # noqa: E702
                 utils.assert_never(
                     f"Unknown walk_log event-type {len(item[b'event-type'])}"
                 )
 
     def _new_node(self, id, parent_id, action, previsit_heuristic_val=None):
+        """
+        This method temporarily brakes the invariant that a node either has all
+        it's children in teh tree or none of it's children (with None)
+        """
         nodes, edges = self.tree.nodes, self.tree.edges
         child_node = types.Node(
             id=id,
@@ -94,6 +96,9 @@ class Engine(t.Generic[G, A, P]):
             child_node.id not in nodes
         ), f"nnodes {len(self.tree.nodes)} id {child_node.id}"
         nodes[child_node.id] = child_node
+        # TODO: is this safe? We want to maintain the invariant that either all
+        # of a nodes children are in the tree or children(parent) = None
+        edges.setdefault(parent_id, [])
         edges[parent_id].append((child_node.id, action))
         return child_node
 
@@ -178,9 +183,9 @@ class Engine(t.Generic[G, A, P]):
 
         for action in self.config.get_all_actions(gamestate):
             m = hashlib.md5()  # parent id
-            m.update(node.id)
+            m.update(int.to_bytes(node.id, ID_LENGTH, "big"))
             m.update(self.config.encode_action(action).encode())
-            id = m.digest()
+            id = int.from_bytes(m.digest()[:ID_LENGTH], "big")
 
             child_node = self._new_node(
                 id,

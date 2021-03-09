@@ -7,7 +7,6 @@ from queue import Queue, Empty
 import json
 import random
 import threading
-import time
 import typing as t
 
 from engine.mctsv1 import Engine
@@ -23,6 +22,8 @@ import redis
 ID_LENGTH = 32  # number of bits in a node id
 
 BUDGET = 2
+
+N_WALK_BATCH = 25
 
 
 G = t.TypeVar("G")  # gamestate
@@ -77,6 +78,16 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
                 command.gamestate_id,
                 parse_config(command) or config,
             )
+
+            if engine is not None:
+                # receiving new game
+                n_nodes = len(engine.tree.nodes)
+                n_walks_produced = engine.n_walks_produced
+                n_walks_consumed = engine.n_walks_consumed
+                n_walks = n_walks_consumed + n_walks_produced
+                print(
+                    f"{gamestate_id=}\t{n_walks=}\t{n_walks_produced=}\t{n_walks_consumed=}"
+                )
             engine = Engine(config, gamestate)
         elif isinstance(command, ctypes.NewConfig):
             utils.print_err("Command NewConfig is unimplemented")
@@ -88,8 +99,8 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
             utils.print_err(f"unknown command_type {type(command)}\n{command}")
 
         if engine is not None:
-            walk_logs, best_move = engine.ponder(n_walks=100)
-            print(f"{gamestate_id=} {len(engine.tree.nodes)=}")
+            walk_logs, best_move = engine.ponder(n_walks=N_WALK_BATCH)
+            # print(f"{gamestate_id=} {len(engine.tree.nodes)=}")
             broadcast_walk_logs(walk_logs, r, gamestate_id, engineserver_id)
             consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
             utils.write_chan(
@@ -183,7 +194,13 @@ def consume_new_walk_logs(
         if log["engineserver_id"] != engineserver_id
     ]
 
+    old_times_visited = engine.root_node.times_visited
     engine.consume_walk_log(consumable_logs)
+    visited_increase = engine.root_node.times_visited - old_times_visited
+    num_walk_results = sum(
+        1 for log in consumable_logs if log["event-type"] == "walk-result"
+    )
+    assert visited_increase == num_walk_results
 
 
 if __name__ == "__main__":

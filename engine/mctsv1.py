@@ -43,6 +43,9 @@ class Engine(t.Generic[G, A, P]):
             nodes={self.root_node.id: self.root_node}, edges={}
         )
 
+        self.n_walks_produced = 0
+        self.n_walks_consumed = 0
+
     def ponder(
         self,
         n_walks: int,
@@ -74,6 +77,7 @@ class Engine(t.Generic[G, A, P]):
             elif item["event-type"] == "walk-result":
                 node = self.tree.nodes[item["node_id"]]
                 self._backup(node, item["score_vec"])
+                self.n_walks_consumed += 1
             else:
                 utils.assert_never(
                     f"Unknown walk_log event-type {item['event-type']}"
@@ -110,6 +114,7 @@ class Engine(t.Generic[G, A, P]):
         self._backup(node, score_vec)
         gamestate = self._restore_gamestate(gamestate, walk_log)
         assert gamestate == self.root_gamestate
+        self.n_walks_produced += 1
         return walk_log
 
     def _tree_policy(

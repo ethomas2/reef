@@ -48,11 +48,6 @@ class Agent(t.Generic[G, A, P]):
 def get_agent(
     agent_type: AgentType, game_type: str, mcts_budget=1, n_engine_servers=2
 ) -> Agent:
-    # TODO (remove): Debug. Random.seed on the client side
-    import random
-
-    random.seed(0)
-
     rules = common.load_rules(game_type)
 
     config = eng_types.MctsConfig(
@@ -179,6 +174,12 @@ class EngineServerFarmClient(t.Generic[G, A]):
         messages = utils.collect(
             msg_stream, min_time=self.timeout, max_time=max(self.timeout, 5)
         )
+        if messages is None:
+            utils.print_err(
+                f"Failed to receive message from engineservers "
+                f"after timeout of {max(self.timeout, 5)}",
+                exit=True,
+            )
         actions = [
             a["best_move"]
             for a in messages

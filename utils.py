@@ -72,6 +72,27 @@ def print_err(msg, exit=False):
         sys.exit(1)
 
 
+def collect(stream, min_time, max_time):
+    """
+    Collect non-null items from the stream for at least <min_time> seconds and
+    return an array of everything read. If no messages have been received by
+    <min_time> wait until <max_time> before either returning None or raising a
+    timeout error.
+    """
+    arr = []
+    start = time.time()
+    min_end, max_end = start + min_time, start + max_time
+    while time.time() < min_end:
+        if (item := next(stream)) is not None:
+            arr.append(item)
+    if len(arr) > 0:
+        return arr
+
+    while time.time() < max_end:
+        if (item := next(stream)) is not None:
+            return [item]
+
+
 #################################### Redis ####################################
 
 
@@ -101,17 +122,48 @@ def read_chan(pubsub: redis.client.PubSub, timeout: t.Optional[int] = None):
                 return deserialize(msg["data"])
 
 
-def read_all_from_chan(pubsub: redis.client.PubSub, timeout: int):
+def chan_to_stream(pubsub: redis.client.PubSub, interval: int):
     """
-    Read from the chan from <teimout> seconds and return everything read
+    Read from the chan or chans defined by pubsub. Return a generator that
+    yields a new result at least every <interval> seconds. If no message is
+    available yield None. Yielding None values is useful so the consumer of
+    this stream can abort before the next "real event" if it wants.
     """
+    while True:
+        yield read_chan(pubsub, interval)
+
+
+def read_all_from_chan(
+    pubsub: redis.client.PubSub,
+    min_time: int,
+    max_time: int,
+    timeout_err: bool = False,
+):
+    """
+    Read from the chan for at least <min_time> seconds and return everything
+    read. If no messages have been received by <min_time> wait until <max_time>
+    before either returning None or raising a timeout error.
+    """
+    assert min_time < max_time
     messages = []
-    end = time.time() + timeout
-    while time.time() < end:
-        msg = read_chan(pubsub, max(end - time.time(), 0))
+    start = time.time()
+    min_end = start + min_time
+    max_end = start + max_time
+    while time.time() < min_end:
+        msg = read_chan(pubsub, max(min_end - time.time(), 0))
         if msg is not None:
             messages.append(msg)
-    return messages
+
+    if len(messages) > 0:
+        return messages
+
+    while time.time() < max_end:
+        msg = read_chan(pubsub, max(min_end - time.time(), 0))
+        if msg is not None:
+            return [msg]
+
+    if timeout_err:
+        raise TimeoutError
 
 
 def write_chan(r: redis.Redis, channel: str, data):

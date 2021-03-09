@@ -133,6 +133,10 @@ class EngineServerFarmClient(t.Generic[G, A]):
         self.pubsub = self.r.pubsub()
         self.pubsub.subscribe("actions")
 
+        atexit.register(
+            lambda: utils.write_chan(self.r, "commands", ctypes.Stop())
+        )
+
     def _launch_engine_servers_local(self, n_engine_servers: int):
         procs = [
             subprocess.Popen(["python", "engineserver/main.py"])
@@ -162,14 +166,25 @@ class EngineServerFarmClient(t.Generic[G, A]):
                 gamestate=gamestate.__dict__,
             ),
         )
-        action_chan_messages = utils.read_all_from_chan(
-            self.pubsub, self.timeout
+
+        def event_stream(interval):
+            while True:
+                yield utils.read_chan(self.pubsub, interval)
+
+        msg_stream = (
+            msg
+            for msg in event_stream(interval=0.1)
+            if msg is None or msg["gamestate_id"] == gamestate_id
+        )
+        messages = utils.collect(
+            msg_stream, min_time=self.timeout, max_time=max(self.timeout, 5)
         )
         actions = [
             a["best_move"]
-            for a in action_chan_messages
+            for a in messages
             if a["gamestate_id"] == gamestate_id
         ]
+        print([a["gamestate_id"] for a in messages])
         assert (
             len(actions) > 0
         ), f"No engineserver responded with actions for gamestate id {gamestate_id}"

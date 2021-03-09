@@ -85,7 +85,7 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
         elif isinstance(command, ctypes.NewConfig):
             utils.print_err("Command NewConfig is unimplemented")
         elif isinstance(command, ctypes.Stop):
-            gamestate = None
+            engine, gamestate, config = None, None, None
         elif command is None:
             pass
         else:

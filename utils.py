@@ -235,6 +235,10 @@ def serialize(_data):
             return d
         elif isinstance(data, int):
             return data
+        elif isinstance(data, float):
+            return data
+        elif isinstance(data, bool):
+            return data
         elif isinstance(data, str):
             return data
         elif isinstance(data, list):
@@ -245,40 +249,44 @@ def serialize(_data):
     return json.dumps(_serialize(_data), sort_keys=True)
 
 
-def deserialize(_msg):
+def deserialize(_data):
     """
-    take _msg (bytes or str) and convert it to a python type.
+    take _data (bytes or str) and convert it to a python type.
     """
 
-    def _deserialize(msg):
-        if msg is None:
+    def _deserialize(data):
+        if data is None:
             return None
-        elif isinstance(msg, int):
-            return msg
-        elif isinstance(msg, str):
-            return msg
-        elif isinstance(msg, list):
-            return [_deserialize(x) for x in msg]
-        elif isinstance(msg, dict):
+        elif isinstance(data, int):
+            return data
+        elif isinstance(data, float):
+            return data
+        elif isinstance(data, bool):
+            return data
+        elif isinstance(data, str):
+            return data
+        elif isinstance(data, list):
+            return [_deserialize(x) for x in data]
+        elif isinstance(data, dict):
             if (
-                "dc_module" in msg and "dc_name" in msg
+                "dc_module" in data and "dc_name" in data
             ):  # assume it's a serialized dataclass
                 klass = getattr(
-                    importlib.import_module(msg["dc_module"]), msg["dc_name"]
+                    importlib.import_module(data["dc_module"]), data["dc_name"]
                 )
                 return klass(
                     **{
                         k: v
-                        for k, v in msg.items()
+                        for k, v in data.items()
                         if k not in ["dc_module", "dc_name"]
                     }
                 )
             else:
-                return {k: _deserialize(v) for (k, v) in msg.items()}
+                return {k: _deserialize(v) for (k, v) in data.items()}
         else:
-            raise Exception(f"Cannot desriralize datatype {type(msg)}")
+            raise Exception(f"Cannot desriralize datatype {type(data)}")
 
-    if _msg is None:
+    if _data is None:
         return None
 
-    return _deserialize(json.loads(_msg))
+    return _deserialize(json.loads(_data))

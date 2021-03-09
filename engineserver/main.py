@@ -4,7 +4,6 @@
 # download tree updates every DOWNLOAD_TREE_UPDATES number of walks
 
 from queue import Queue, Empty
-import atexit
 import json
 import random
 import threading
@@ -37,9 +36,6 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
     """
 
     r = redis.Redis(**redis_config.__dict__)
-    atexit.register(
-        r.flushall
-    )  # ideally should wait until all enginservers die
 
     pubsub = r.pubsub()
     pubsub.subscribe("commands")
@@ -93,7 +89,7 @@ def serve(redis_config: eng_types.RedisConfig, engineserver_id: int) -> A:
 
         if engine is not None:
             walk_logs, best_move = engine.ponder(n_walks=100)
-            print("tree len", len(engine.tree.nodes))
+            print(f"{gamestate_id=} {len(engine.tree.nodes)=}")
             broadcast_walk_logs(walk_logs, r, gamestate_id, engineserver_id)
             consume_new_walk_logs(rsr, gamestate_id, engine, engineserver_id)
             utils.write_chan(
@@ -155,7 +151,15 @@ def broadcast_walk_logs(
                         },
                     )
                 elif item["event-type"] == "walk-result":
-                    pass
+                    utils.write_stream(
+                        stream,
+                        pipe,
+                        {
+                            "engineserver_id": engineserver_id,
+                            "item": item,
+                        },
+                    )
+
                 elif item["event-type"] == "take-action":
                     pass
                 else:

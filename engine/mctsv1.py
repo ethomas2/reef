@@ -72,8 +72,8 @@ class Engine(t.Generic[G, A, P]):
                     )
 
             elif item["event-type"] == "walk-result":
-                pass
-                # raise NotImplementedError
+                node = self.tree.nodes[item["node_id"]]
+                self._backup(node, item["score_vec"])
             else:
                 utils.assert_never(
                     f"Unknown walk_log event-type {item['event-type']}"
@@ -107,7 +107,7 @@ class Engine(t.Generic[G, A, P]):
         walk_log = []  # walk log will be mutated
         node = self._tree_policy(walk_log, gamestate)
         score_vec = self._rollout(node, walk_log, gamestate)
-        self._backup(node, score_vec, gamestate, walk_log)
+        self._backup(node, score_vec)
         gamestate = self._restore_gamestate(gamestate, walk_log)
         assert gamestate == self.root_gamestate
         return walk_log
@@ -225,7 +225,13 @@ class Engine(t.Generic[G, A, P]):
                 else {p: int(p == winning_player) for p in self.config.players}
             )
         assert set(score_vec.keys()) == set(self.config.players)
-        walk_log.append({"event-type": "walk-result", "score": score_vec})
+        walk_log.append(
+            {
+                "event-type": "walk-result",
+                "score_vec": score_vec,
+                "node_id": node.id,
+            }
+        )
         return score_vec
 
     def _simulate(
@@ -250,8 +256,6 @@ class Engine(t.Generic[G, A, P]):
         self,
         node: types.Node,
         score_vec: types.ScoreVec,
-        gamestate: G,
-        walk_log: types.WalkLog,
     ):
         """ Update node statistics """
         assert all(0 <= v <= 1 for v in score_vec.values())

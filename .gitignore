@@ -1,3 +1,4 @@
+# python stuff
 .envrc
 .mypy_cache
 __pycache__
@@ -5,3 +6,7 @@ cards.orig
 venv
 tasks.md
 .hypothesis
+
+# rust stuff
+target
+Cargo.lock

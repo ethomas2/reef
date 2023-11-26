@@ -82,8 +82,8 @@ def get_agent(
     elif agent_type == "mcts-local":
 
         def get_action(gamestate: G) -> A:
-            engine = Engine(config)
-            _, action = engine.ponder(gamestate, mcts_budget)
+            engine = Engine(config, gamestate)
+            _, action = engine.ponder(100)
             return action
 
         return Agent(get_action=get_action, agent_type=agent_type)

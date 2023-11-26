@@ -4,6 +4,8 @@ import contextlib
 import argparse
 import random
 import sys
+from client.agent import get_agent, AGENT_TYPES
+from client.main import play_game
 
 # from connect4.heuristic import heuristic
 import utils
@@ -49,6 +51,6 @@ if __name__ == "__main__":
                 "Argparse allowed file=None even though nofile is not given"
             )
 
-        agent = get_agent(player_type)
+        agent = get_agent(player_type, '2048', player_type)
 
-        play_game(agent, output)
+        play_game([agent], '2048', output)

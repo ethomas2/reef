@@ -15,3 +15,4 @@ path = "src/main.rs"    # Path to the binary entry point
 
 [dependencies]
 clap = { version = "4.4.8", features = ["derive"] }
+rand = "0.8.5"

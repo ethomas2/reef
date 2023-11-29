@@ -20,6 +20,6 @@ struct Cli {
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     println!("foobar");
-    rules::stroopwaffle();
+    let gamestate = rules::init_game();
     Ok(())
 }

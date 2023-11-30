@@ -1,3 +1,5 @@
+use itertools::iproduct;
+use itertools::Itertools;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 
@@ -20,6 +22,16 @@ impl Board {
         // TODO: this cast is ugly. Is this cannonical?
         // https://stackoverflow.com/questions/28273169/how-do-i-convert-between-numeric-types-safely-and-idiomatically
         &mut self.0[(4 * r + c) as usize]
+    }
+
+    fn get<T>(&self, placement: T) -> SpaceValue
+    where
+        T: Into<Placement>,
+    {
+        let Placement(r, c) = placement.into();
+        // TODO: this cast is ugly. Is this cannonical?
+        // https://stackoverflow.com/questions/28273169/how-do-i-convert-between-numeric-types-safely-and-idiomatically
+        self.0[(4 * r + c) as usize]
     }
 
     /// Take the given board and "move" everything left. I.e. take the left action. All tiles move
@@ -113,6 +125,7 @@ pub struct GameState {
     player: Player,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum PlayerAction {
     Up,
     Down,
@@ -215,6 +228,56 @@ fn take_player_action_mut(mut gamestate: GameState, action: PlayerAction) {
                 .rotate_clockwise()
                 .move_left()
                 .rotate_counter_clockwise();
+        }
+    }
+}
+
+// TODO: Iterator of actions instead?
+fn get_all_actions(gamestate: GameState) -> Vec<Action> {
+    let GameState { ref board, .. } = gamestate;
+    match gamestate.player {
+        Player::Player => {
+            let mut actions: Vec<PlayerAction> = Default::default();
+            for (r, c) in iproduct!((0..SIDE), (0..SIDE)) {
+                let this_item = board.get((r, c));
+                if r + 1 < SIDE
+                    && (board.get((r + 1, c)) == 0 || board.get((r + 1, c)) == this_item)
+                {
+                    actions.push(PlayerAction::Down);
+                } else if r >= 1
+                    && (board.get((r - 1, c)) == 0 || board.get((r - 1, c)) == this_item)
+                {
+                    actions.push(PlayerAction::Up);
+                } else if c + 1 < SIDE
+                    && (board.get((r, c + 1)) == 0 || board.get((r, c + 1)) == this_item)
+                {
+                    actions.push(PlayerAction::Right);
+                } else if c >= 1
+                    && (board.get((r, c - 1)) == 0 || board.get((r, c - 1)) == this_item)
+                {
+                    actions.push(PlayerAction::Left);
+                }
+            }
+
+            actions.sort();
+            actions
+                .into_iter()
+                .dedup()
+                .map(|x| Action::PlayerAction(x))
+                .collect()
+        }
+        Player::Environment => {
+            let empty_spaces = iproduct!((0..SIDE), (0..SIDE)).filter(|&x| board.get(x) == 0);
+            let actions: Vec<_> = empty_spaces
+                .flat_map(|placement| {
+                    [1, 2].map(|val| EnvironmentAction {
+                        placement: placement.into(),
+                        val,
+                    })
+                })
+                .map(|env_action| Action::EnvironmentAction(env_action))
+                .collect();
+            actions
         }
     }
 }

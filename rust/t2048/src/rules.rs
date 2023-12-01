@@ -1,16 +1,91 @@
 use itertools::iproduct;
 use itertools::Itertools;
-use rand::prelude::*;
 use rand::seq::SliceRandom;
+use rand::Rng;
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Write;
+use std::str::FromStr;
 
 const SIDE: usize = 4;
 const BOARD_SIZE: usize = SIDE * SIDE;
 
-type SpaceValue = usize;
+//////////////////////////////////// types ////////////////////////////////////
 
 // TODO: consider making this a u8 where x represents 2**x
+type SpaceValue = usize;
+
 #[derive(Default, PartialEq, Eq, Debug, Clone)]
 struct Board([SpaceValue; BOARD_SIZE]);
+
+#[derive(Debug, Copy, Clone)]
+pub enum Player {
+    Player,
+    Environment,
+}
+
+#[derive(Debug)]
+pub struct GameState {
+    board: Board,
+    player: Player,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum PlayerAction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone)]
+struct Placement(u8, u8); // space on the baord
+
+#[derive(Debug, Clone)]
+pub struct EnvironmentAction {
+    placement: Placement,
+    val: SpaceValue,
+}
+
+#[derive(Debug)]
+pub struct IllegalActionError(Action);
+
+/// union type over PlayerAction and EnvironmentAction
+#[derive(Debug, Clone)]
+pub enum Action {
+    PlayerAction(PlayerAction),
+    EnvironmentAction(EnvironmentAction),
+}
+
+/////////////////////////////// Implementations ///////////////////////////////
+impl From<usize> for Placement {
+    fn from(x: usize) -> Self {
+        Self(
+            (x / SIDE).try_into().unwrap(),
+            (x % SIDE).try_into().unwrap(),
+        )
+    }
+}
+
+impl From<(usize, usize)> for Placement {
+    fn from((r, c): (usize, usize)) -> Self {
+        Self(r.try_into().unwrap(), c.try_into().unwrap())
+    }
+}
+
+impl FromStr for PlayerAction {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            "Up" | "U" | "u" => Ok(PlayerAction::Up),
+            "Down" | "D" | "d" => Ok(PlayerAction::Down),
+            "Left" | "L" | "l" => Ok(PlayerAction::Left),
+            "Right" | "R" | "r" => Ok(PlayerAction::Right),
+            _ => Err(format!("Unknown Action {}", s)),
+        }
+    }
+}
 
 impl Board {
     /// This method is kind of extra. Why this dance of converting stuff to a placement?
@@ -115,96 +190,114 @@ impl Board {
     }
 }
 
-enum Player {
-    Player,
-    Environment,
-}
-
-pub struct GameState {
-    board: Board,
-    player: Player,
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum PlayerAction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-struct Placement(u8, u8); // space on the baord
-impl From<usize> for Placement {
-    fn from(x: usize) -> Self {
-        Self(
-            (x / SIDE).try_into().unwrap(),
-            (x % SIDE).try_into().unwrap(),
-        )
+impl GameState {
+    pub fn to_console(&self) -> Result<String, std::fmt::Error> {
+        let mut s = String::new();
+        let GameState { board, player } = self;
+        // TODO: what to do if writeln! returns an error
+        match player {
+            Player::Player => writeln!(&mut s, "player :: Player")?,
+            Player::Environment => writeln!(&mut s, "player :: Environment")?,
+        };
+        let printable: Vec<_> = board.0.iter().map(|val| format!("{}", val)).collect();
+        let width = printable.iter().map(|s| s.len()).max().unwrap();
+        for r in 0..SIDE {
+            for c in 0..SIDE {
+                write!(
+                    &mut s,
+                    " {:width$} ",
+                    printable[SIDE * r + c],
+                    width = width
+                )?;
+            }
+            writeln!(&mut s)?;
+        }
+        Ok(s)
     }
 }
 
-impl From<(usize, usize)> for Placement {
-    fn from((r, c): (usize, usize)) -> Self {
-        Self(r.try_into().unwrap(), c.try_into().unwrap())
+impl Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Action::PlayerAction(pa) => match pa {
+                PlayerAction::Up => writeln!(f, "Up")?,
+                PlayerAction::Down => writeln!(f, "Down")?,
+                PlayerAction::Left => writeln!(f, "Left")?,
+                PlayerAction::Right => writeln!(f, "Right")?,
+            },
+            Action::EnvironmentAction(EnvironmentAction {
+                placement: Placement(r, c),
+                val,
+            }) => writeln!(f, "({}, {}) {}", r, c, val)?,
+        };
+        Ok(())
     }
 }
 
-struct EnvironmentAction {
-    placement: Placement,
-    val: SpaceValue,
-}
-
-/// union type over PlayerAction and EnvironmentAction
-enum Action {
-    PlayerAction(PlayerAction),
-    EnvironmentAction(EnvironmentAction),
-}
-
-pub fn init_game() -> GameState {
-    let mut rng = rand::thread_rng(); // Create a random number generator
-    let (loc1, loc2) = (0..BOARD_SIZE)
+pub fn init_game(rng: &mut rand::rngs::ThreadRng) -> GameState {
+    let &(loc1, loc2) = (0..BOARD_SIZE)
         .flat_map(|i| ((i + 1)..BOARD_SIZE).map(move |j| (i, j)))
-        .choose(&mut rng)
+        .collect::<Vec<_>>()
+        .choose(rng)
         .unwrap();
     let mut gs: GameState = GameState {
         board: Default::default(),
         player: Player::Player,
     };
-    *gs.board.get_mut(loc1) = *[2, 4].choose(&mut rng).unwrap();
-    *gs.board.get_mut(loc2) = *[2, 4].choose(&mut rng).unwrap();
+    *gs.board.get_mut(loc1) = *[2, 4].choose(rng).unwrap();
+    *gs.board.get_mut(loc2) = *[2, 4].choose(rng).unwrap();
 
     gs
 }
 
-pub fn take_action_mut(mut gamestate: GameState, action: Action) {
-    // TODO: replace this debug assert with is_legal_move(gamestate, action)
-    debug_assert!(
-        {
-            match gamestate.player {
-                Player::Player => matches!(action, Action::PlayerAction(..)),
-                Player::Environment => matches!(action, Action::EnvironmentAction(..)),
-            }
-        },
-        "illegal move"
-    );
+pub fn take_action_mut(
+    gamestate: &mut GameState,
+    action: Action,
+) -> Result<(), IllegalActionError> {
+    // TODO: test that you fail on illegal moves
+    let is_correct_players_turn = match gamestate.player {
+        Player::Player => matches!(action, Action::PlayerAction(..)),
+        Player::Environment => matches!(action, Action::EnvironmentAction(..)),
+    };
+    if !is_correct_players_turn {
+        return Err(IllegalActionError(action));
+    }
+
     match action {
-        Action::PlayerAction(player_action) => take_player_action_mut(gamestate, player_action),
+        Action::PlayerAction(player_action) => {
+            take_player_action_mut(gamestate, player_action)?;
+        }
         Action::EnvironmentAction(environment_action) => {
-            take_environment_action_mut(gamestate, environment_action)
+            take_environment_action_mut(gamestate, environment_action)?;
         }
     }
+    Ok(())
 }
 
-fn take_environment_action_mut(mut gamestate: GameState, action: EnvironmentAction) {
+fn take_environment_action_mut(
+    gamestate: &mut GameState,
+    action: EnvironmentAction,
+) -> Result<(), IllegalActionError> {
     debug_assert!(matches!(gamestate.player, Player::Environment));
-    let EnvironmentAction { placement, val } = action;
-    *gamestate.board.get_mut(placement) = val;
+    let EnvironmentAction { placement, val } = action.clone();
+    let space = gamestate.board.get_mut(placement);
+    if *space != 0 {
+        return Err(IllegalActionError(Action::EnvironmentAction(action)));
+    }
+    *space = val;
     gamestate.player = Player::Player;
+    Ok(())
 }
 
-fn take_player_action_mut(mut gamestate: GameState, action: PlayerAction) {
+fn take_player_action_mut(
+    gamestate: &mut GameState,
+    action: PlayerAction,
+) -> Result<(), IllegalActionError> {
     debug_assert!(matches!(gamestate.player, Player::Player));
-    let GameState { ref mut board, .. } = gamestate;
+    let GameState {
+        ref mut board,
+        ref mut player,
+    } = gamestate;
     match action {
         PlayerAction::Left => {
             board.move_left();
@@ -230,10 +323,12 @@ fn take_player_action_mut(mut gamestate: GameState, action: PlayerAction) {
                 .rotate_counter_clockwise();
         }
     }
+    *player = Player::Environment;
+    Ok(())
 }
 
 // TODO: Iterator of actions instead?
-fn get_all_actions(gamestate: GameState) -> Vec<Action> {
+pub fn get_all_actions(gamestate: &GameState) -> Vec<Action> {
     let GameState { ref board, .. } = gamestate;
     match gamestate.player {
         Player::Player => {
@@ -278,6 +373,32 @@ fn get_all_actions(gamestate: GameState) -> Vec<Action> {
                 .map(|env_action| Action::EnvironmentAction(env_action))
                 .collect();
             actions
+        }
+    }
+}
+
+pub fn get_random_action(gamestate: &GameState) -> Option<Action> {
+    let mut rng = rand::thread_rng();
+    match gamestate.player {
+        Player::Player => {
+            let mut actions = get_all_actions(gamestate);
+            if actions.len() == 0 {
+                None
+            } else {
+                Some(actions.remove(rng.gen_range(0..actions.len())))
+            }
+        }
+        Player::Environment => {
+            let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
+                .filter(|&(r, c)| gamestate.board.get((r, c)) == 0)
+                .collect();
+            let random_placement = available_placements.choose(&mut rng).map(|&x| x);
+            random_placement.map(|placement| {
+                Action::EnvironmentAction(EnvironmentAction {
+                    placement: placement.into(),
+                    val: *[2, 4].choose(&mut rng).unwrap(),
+                })
+            })
         }
     }
 }

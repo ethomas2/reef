@@ -42,12 +42,14 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
         }
 
         // take action and display
-        rules::take_action_mut(gamestate, action).expect("Player took an illegal action");
+        gamestate
+            .take_action_mut(action)
+            .expect("Player took an illegal action");
         println!("{}", gamestate.to_console().unwrap());
 
         // get action from engine
         let random_environment_action = {
-            let mut actions = rules::get_all_actions(&gamestate);
+            let mut actions = gamestate.get_all_actions();
             if actions.len() == 0 {
                 None
             } else {
@@ -62,7 +64,8 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
             }
             Some(action) => {
                 println!("Enviornment Action: {}", action);
-                rules::take_action_mut(gamestate, action)
+                gamestate
+                    .take_action_mut(action)
                     .expect("Environment took an illegal action");
                 println!("{}", gamestate.to_console().unwrap());
             }
@@ -77,19 +80,21 @@ fn random_game(gamestate: &mut rules::GameState) {
     loop {
         // get random action
         let action = {
-            let mut random_actions = rules::get_all_actions(gamestate);
+            let mut random_actions = gamestate.get_all_actions();
             let rand_idx = rng.gen_range(0..random_actions.len());
             random_actions.remove(rand_idx)
         };
         println!("Random Player Action :: {}", action);
 
         // take action and display
-        rules::take_action_mut(gamestate, action).expect("Player took an illegal action");
+        gamestate
+            .take_action_mut(action)
+            .expect("Player took an illegal action");
         println!("{}", gamestate.to_console().unwrap());
 
         // get action from engine
         let random_environment_action = {
-            let mut actions = rules::get_all_actions(&gamestate);
+            let mut actions = gamestate.get_all_actions();
             if actions.len() == 0 {
                 None
             } else {
@@ -104,7 +109,8 @@ fn random_game(gamestate: &mut rules::GameState) {
             }
             Some(action) => {
                 println!("Enviornment Action: {}", action);
-                rules::take_action_mut(gamestate, action)
+                gamestate
+                    .take_action_mut(action)
                     .expect("Environment took an illegal action");
                 println!("{}", gamestate.to_console().unwrap());
             }
@@ -115,7 +121,7 @@ fn random_game(gamestate: &mut rules::GameState) {
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let mut rng = rand::thread_rng();
-    let mut gamestate = rules::init_game(&mut rng);
+    let mut gamestate = rules::GameState::init_game(&mut rng);
     match cli.player_type {
         PlayerType::Human => human_play_1player_game(&mut gamestate),
         PlayerType::Random => random_game(&mut gamestate),

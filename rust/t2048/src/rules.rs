@@ -214,6 +214,169 @@ impl GameState {
         }
         Ok(s)
     }
+
+    pub fn init_game(rng: &mut rand::rngs::ThreadRng) -> GameState {
+        let &(loc1, loc2) = (0..BOARD_SIZE)
+            .flat_map(|i| ((i + 1)..BOARD_SIZE).map(move |j| (i, j)))
+            .collect::<Vec<_>>()
+            .choose(rng)
+            .unwrap();
+        let mut gs: GameState = GameState {
+            board: Default::default(),
+            player: Player::Player,
+        };
+        *gs.board.get_mut(loc1) = *[2, 4].choose(rng).unwrap();
+        *gs.board.get_mut(loc2) = *[2, 4].choose(rng).unwrap();
+
+        gs
+    }
+
+    pub fn take_action_mut(&mut self, action: Action) -> Result<(), IllegalActionError> {
+        // TODO: test that you fail on illegal moves
+        let is_correct_players_turn = match self.player {
+            Player::Player => matches!(action, Action::PlayerAction(..)),
+            Player::Environment => matches!(action, Action::EnvironmentAction(..)),
+        };
+        if !is_correct_players_turn {
+            return Err(IllegalActionError(action));
+        }
+
+        match action {
+            Action::PlayerAction(player_action) => {
+                self.take_player_action_mut(player_action)?;
+            }
+            Action::EnvironmentAction(environment_action) => {
+                self.take_environment_action_mut(environment_action)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn take_environment_action_mut(
+        &mut self,
+        action: EnvironmentAction,
+    ) -> Result<(), IllegalActionError> {
+        debug_assert!(matches!(self.player, Player::Environment));
+        let EnvironmentAction { placement, val } = action.clone();
+        let space = self.board.get_mut(placement);
+        if *space != 0 {
+            return Err(IllegalActionError(Action::EnvironmentAction(action)));
+        }
+        *space = val;
+        self.player = Player::Player;
+        Ok(())
+    }
+
+    fn take_player_action_mut(&mut self, action: PlayerAction) -> Result<(), IllegalActionError> {
+        debug_assert!(matches!(self.player, Player::Player));
+        let GameState {
+            ref mut board,
+            ref mut player,
+        } = self;
+        match action {
+            PlayerAction::Left => {
+                board.move_left();
+            }
+            PlayerAction::Right => {
+                board
+                    .rotate_clockwise()
+                    .rotate_clockwise()
+                    .move_left()
+                    .rotate_clockwise()
+                    .rotate_clockwise();
+            }
+            PlayerAction::Up => {
+                board
+                    .rotate_counter_clockwise()
+                    .move_left()
+                    .rotate_clockwise();
+            }
+            PlayerAction::Down => {
+                board
+                    .rotate_clockwise()
+                    .move_left()
+                    .rotate_counter_clockwise();
+            }
+        }
+        *player = Player::Environment;
+        Ok(())
+    }
+
+    // TODO: Iterator of actions instead?
+    pub fn get_all_actions(&self) -> Vec<Action> {
+        let GameState { ref board, .. } = self;
+        match self.player {
+            Player::Player => {
+                let mut actions: Vec<PlayerAction> = Default::default();
+                for (r, c) in iproduct!((0..SIDE), (0..SIDE)) {
+                    let this_item = board.get((r, c));
+                    if r + 1 < SIDE
+                        && (board.get((r + 1, c)) == 0 || board.get((r + 1, c)) == this_item)
+                    {
+                        actions.push(PlayerAction::Down);
+                    } else if r >= 1
+                        && (board.get((r - 1, c)) == 0 || board.get((r - 1, c)) == this_item)
+                    {
+                        actions.push(PlayerAction::Up);
+                    } else if c + 1 < SIDE
+                        && (board.get((r, c + 1)) == 0 || board.get((r, c + 1)) == this_item)
+                    {
+                        actions.push(PlayerAction::Right);
+                    } else if c >= 1
+                        && (board.get((r, c - 1)) == 0 || board.get((r, c - 1)) == this_item)
+                    {
+                        actions.push(PlayerAction::Left);
+                    }
+                }
+
+                actions.sort();
+                actions
+                    .into_iter()
+                    .dedup()
+                    .map(|x| Action::PlayerAction(x))
+                    .collect()
+            }
+            Player::Environment => {
+                let empty_spaces = iproduct!((0..SIDE), (0..SIDE)).filter(|&x| board.get(x) == 0);
+                let actions: Vec<_> = empty_spaces
+                    .flat_map(|placement| {
+                        [1, 2].map(|val| EnvironmentAction {
+                            placement: placement.into(),
+                            val,
+                        })
+                    })
+                    .map(|env_action| Action::EnvironmentAction(env_action))
+                    .collect();
+                actions
+            }
+        }
+    }
+
+    pub fn get_random_action(&self) -> Option<Action> {
+        let mut rng = rand::thread_rng();
+        match self.player {
+            Player::Player => {
+                let mut actions = self.get_all_actions();
+                if actions.len() == 0 {
+                    None
+                } else {
+                    Some(actions.remove(rng.gen_range(0..actions.len())))
+                }
+            }
+            Player::Environment => {
+                let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
+                    .filter(|&(r, c)| self.board.get((r, c)) == 0)
+                    .collect();
+                let random_placement = available_placements.choose(&mut rng).map(|&x| x);
+                random_placement.map(|placement| {
+                    Action::EnvironmentAction(EnvironmentAction {
+                        placement: placement.into(),
+                        val: *[2, 4].choose(&mut rng).unwrap(),
+                    })
+                })
+            }
+        }
+    }
 }
 
 impl Display for Action {
@@ -231,175 +394,6 @@ impl Display for Action {
             }) => writeln!(f, "({}, {}) {}", r, c, val)?,
         };
         Ok(())
-    }
-}
-
-pub fn init_game(rng: &mut rand::rngs::ThreadRng) -> GameState {
-    let &(loc1, loc2) = (0..BOARD_SIZE)
-        .flat_map(|i| ((i + 1)..BOARD_SIZE).map(move |j| (i, j)))
-        .collect::<Vec<_>>()
-        .choose(rng)
-        .unwrap();
-    let mut gs: GameState = GameState {
-        board: Default::default(),
-        player: Player::Player,
-    };
-    *gs.board.get_mut(loc1) = *[2, 4].choose(rng).unwrap();
-    *gs.board.get_mut(loc2) = *[2, 4].choose(rng).unwrap();
-
-    gs
-}
-
-pub fn take_action_mut(
-    gamestate: &mut GameState,
-    action: Action,
-) -> Result<(), IllegalActionError> {
-    // TODO: test that you fail on illegal moves
-    let is_correct_players_turn = match gamestate.player {
-        Player::Player => matches!(action, Action::PlayerAction(..)),
-        Player::Environment => matches!(action, Action::EnvironmentAction(..)),
-    };
-    if !is_correct_players_turn {
-        return Err(IllegalActionError(action));
-    }
-
-    match action {
-        Action::PlayerAction(player_action) => {
-            take_player_action_mut(gamestate, player_action)?;
-        }
-        Action::EnvironmentAction(environment_action) => {
-            take_environment_action_mut(gamestate, environment_action)?;
-        }
-    }
-    Ok(())
-}
-
-fn take_environment_action_mut(
-    gamestate: &mut GameState,
-    action: EnvironmentAction,
-) -> Result<(), IllegalActionError> {
-    debug_assert!(matches!(gamestate.player, Player::Environment));
-    let EnvironmentAction { placement, val } = action.clone();
-    let space = gamestate.board.get_mut(placement);
-    if *space != 0 {
-        return Err(IllegalActionError(Action::EnvironmentAction(action)));
-    }
-    *space = val;
-    gamestate.player = Player::Player;
-    Ok(())
-}
-
-fn take_player_action_mut(
-    gamestate: &mut GameState,
-    action: PlayerAction,
-) -> Result<(), IllegalActionError> {
-    debug_assert!(matches!(gamestate.player, Player::Player));
-    let GameState {
-        ref mut board,
-        ref mut player,
-    } = gamestate;
-    match action {
-        PlayerAction::Left => {
-            board.move_left();
-        }
-        PlayerAction::Right => {
-            board
-                .rotate_clockwise()
-                .rotate_clockwise()
-                .move_left()
-                .rotate_clockwise()
-                .rotate_clockwise();
-        }
-        PlayerAction::Up => {
-            board
-                .rotate_counter_clockwise()
-                .move_left()
-                .rotate_clockwise();
-        }
-        PlayerAction::Down => {
-            board
-                .rotate_clockwise()
-                .move_left()
-                .rotate_counter_clockwise();
-        }
-    }
-    *player = Player::Environment;
-    Ok(())
-}
-
-// TODO: Iterator of actions instead?
-pub fn get_all_actions(gamestate: &GameState) -> Vec<Action> {
-    let GameState { ref board, .. } = gamestate;
-    match gamestate.player {
-        Player::Player => {
-            let mut actions: Vec<PlayerAction> = Default::default();
-            for (r, c) in iproduct!((0..SIDE), (0..SIDE)) {
-                let this_item = board.get((r, c));
-                if r + 1 < SIDE
-                    && (board.get((r + 1, c)) == 0 || board.get((r + 1, c)) == this_item)
-                {
-                    actions.push(PlayerAction::Down);
-                } else if r >= 1
-                    && (board.get((r - 1, c)) == 0 || board.get((r - 1, c)) == this_item)
-                {
-                    actions.push(PlayerAction::Up);
-                } else if c + 1 < SIDE
-                    && (board.get((r, c + 1)) == 0 || board.get((r, c + 1)) == this_item)
-                {
-                    actions.push(PlayerAction::Right);
-                } else if c >= 1
-                    && (board.get((r, c - 1)) == 0 || board.get((r, c - 1)) == this_item)
-                {
-                    actions.push(PlayerAction::Left);
-                }
-            }
-
-            actions.sort();
-            actions
-                .into_iter()
-                .dedup()
-                .map(|x| Action::PlayerAction(x))
-                .collect()
-        }
-        Player::Environment => {
-            let empty_spaces = iproduct!((0..SIDE), (0..SIDE)).filter(|&x| board.get(x) == 0);
-            let actions: Vec<_> = empty_spaces
-                .flat_map(|placement| {
-                    [1, 2].map(|val| EnvironmentAction {
-                        placement: placement.into(),
-                        val,
-                    })
-                })
-                .map(|env_action| Action::EnvironmentAction(env_action))
-                .collect();
-            actions
-        }
-    }
-}
-
-pub fn get_random_action(gamestate: &GameState) -> Option<Action> {
-    let mut rng = rand::thread_rng();
-    match gamestate.player {
-        Player::Player => {
-            let mut actions = get_all_actions(gamestate);
-            if actions.len() == 0 {
-                None
-            } else {
-                Some(actions.remove(rng.gen_range(0..actions.len())))
-            }
-        }
-        Player::Environment => {
-            let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
-                .filter(|&(r, c)| gamestate.board.get((r, c)) == 0)
-                .collect();
-            let random_placement = available_placements.choose(&mut rng).map(|&x| x);
-            random_placement.map(|placement| {
-                Action::EnvironmentAction(EnvironmentAction {
-                    placement: placement.into(),
-                    val: *[2, 4].choose(&mut rng).unwrap(),
-                })
-            })
-        }
     }
 }
 

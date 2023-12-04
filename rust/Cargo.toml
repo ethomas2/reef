@@ -1,10 +1,19 @@
-[workspace]
-members = ["engine", "t2048"]
-resolver = "2"
-
-# [package]
-# name = "mcts"
-# version = "0.0.1"
-# edition = "2021"
+[package]
+name = "mcts"
+version = "0.1.0"
+edition = "2021"
 
 
+[[bin]]
+name = "2048"
+path = "src/t2048/main.rs"
+
+[lib]
+name = "engine"
+path = "src/engine/lib.rs"
+
+
+[dependencies]
+clap = { version = "4.4.8", features = ["derive"] }
+rand = "0.8.5"
+itertools = "0.12.0"

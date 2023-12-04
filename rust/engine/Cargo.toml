@@ -1,8 +1,0 @@
-[package]
-name = "engine"
-version = "0.0.1"
-edition = "2021"
-
-# entrypoint is lib.rs. It will re export mcts.rs and minimax.rs
-# [lib]
-# path = "mcts.rs"  # Specify the entry point for your library, if it's not lib.rs

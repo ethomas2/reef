@@ -1,9 +1,13 @@
+mod rules;
+
+// use self::rules;
+extern crate engine;
 use clap::{Parser, ValueEnum};
+use engine::foo;
 use rand;
 use rand::Rng;
 use std::error::Error;
 use std::io;
-use t2048::rules;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum PlayerType {

@@ -1,5 +1,6 @@
 use itertools::iproduct;
 use itertools::Itertools;
+use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::fmt;
@@ -352,8 +353,7 @@ impl GameState {
         }
     }
 
-    pub fn get_random_action(&self) -> Option<Action> {
-        let mut rng = rand::thread_rng();
+    pub fn get_random_action(&self, rng: &mut ThreadRng) -> Option<Action> {
         match self.player {
             Player::Player => {
                 let mut actions = self.get_all_actions();
@@ -367,11 +367,11 @@ impl GameState {
                 let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
                     .filter(|&(r, c)| self.board.get((r, c)) == 0)
                     .collect();
-                let random_placement = available_placements.choose(&mut rng).map(|&x| x);
+                let random_placement = available_placements.choose(rng).map(|&x| x);
                 random_placement.map(|placement| {
                     Action::EnvironmentAction(EnvironmentAction {
                         placement: placement.into(),
-                        val: *[2, 4].choose(&mut rng).unwrap(),
+                        val: *[2, 4].choose(rng).unwrap(),
                     })
                 })
             }

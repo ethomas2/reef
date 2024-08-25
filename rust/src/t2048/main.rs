@@ -83,8 +83,13 @@ fn random_game(gamestate: &mut rules::GameState) {
         // get random action
         let action = {
             let mut random_actions = gamestate.get_all_actions();
-            let rand_idx = rng.gen_range(0..random_actions.len());
-            random_actions.remove(rand_idx)
+            let num_actions = random_actions.len();
+            if num_actions == 0 {
+                println!("No more actions available. Breaking");
+                break;
+            } else {
+                random_actions.remove(rng.gen_range(0..num_actions))
+            }
         };
         println!("Random Player Action :: {}", action);
 

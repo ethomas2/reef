@@ -112,7 +112,7 @@ impl Board {
 
     /// Take the given board and "move" everything left. I.e. take the left action. All tiles move
     /// left as far as possible and "squash" with the tile to the left of them if they're the same
-    fn move_left(self: &mut Self) -> &mut Self {
+    fn move_left(&mut self) -> &mut Self {
         for r in 0..SIDE {
             // left = 0
             // right = first non empty
@@ -125,7 +125,7 @@ impl Board {
                 let left_tile = *self.get_mut((r, left_idx));
                 let right_idx_opt =
                     ((left_idx + 1)..SIDE).find(|idx| *self.get_mut((r, *idx)) != 0);
-                if matches!(right_idx_opt, None) {
+                if right_idx_opt.is_none() {
                     break;
                 }
                 let right_idx = right_idx_opt.unwrap();
@@ -156,7 +156,7 @@ impl Board {
         self
     }
 
-    fn rotate_clockwise(self: &mut Self) -> &mut Self {
+    fn rotate_clockwise(&mut self) -> &mut Self {
         // TODO: get rid of the rotate variable. Extra memory allocation
         // TODO: get rid of this whole thing. Replace rotateions with a view on top of the board
         let mut rotated: Board = Default::default();
@@ -173,7 +173,7 @@ impl Board {
         self
     }
 
-    fn rotate_counter_clockwise(self: &mut Self) -> &mut Self {
+    fn rotate_counter_clockwise(&mut self) -> &mut Self {
         // TODO: get rid of the rotate variable. Extra memory allocation
         // TODO: get rid of this whole thing. Replace rotateions with a view on top of the board
         let mut rotated: Board = Default::default();
@@ -334,7 +334,7 @@ impl GameState {
                 actions
                     .into_iter()
                     .dedup()
-                    .map(|x| Action::PlayerAction(x))
+                    .map(Action::PlayerAction)
                     .collect()
             }
             Player::Environment => {
@@ -346,7 +346,7 @@ impl GameState {
                             val,
                         })
                     })
-                    .map(|env_action| Action::EnvironmentAction(env_action))
+                    .map(Action::EnvironmentAction)
                     .collect();
                 actions
             }
@@ -357,7 +357,7 @@ impl GameState {
         match self.player {
             Player::Player => {
                 let mut actions = self.get_all_actions();
-                if actions.len() == 0 {
+                if actions.is_empty() {
                     None
                 } else {
                     Some(actions.remove(rng.gen_range(0..actions.len())))
@@ -367,7 +367,7 @@ impl GameState {
                 let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
                     .filter(|&(r, c)| self.board.get((r, c)) == 0)
                     .collect();
-                let random_placement = available_placements.choose(rng).map(|&x| x);
+                let random_placement = available_placements.choose(rng).copied();
                 random_placement.map(|placement| {
                     Action::EnvironmentAction(EnvironmentAction {
                         placement: placement.into(),

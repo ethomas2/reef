@@ -3,8 +3,8 @@ mod rules;
 // use self::rules;
 extern crate engine;
 use clap::{Parser, ValueEnum};
-use engine::foo;
-use rand;
+
+
 use rand::Rng;
 use std::error::Error;
 use std::io;
@@ -54,7 +54,7 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
         // get action from engine
         let random_environment_action = {
             let mut actions = gamestate.get_all_actions();
-            if actions.len() == 0 {
+            if actions.is_empty() {
                 None
             } else {
                 let idx = rng.gen_range(0..actions.len());
@@ -99,7 +99,7 @@ fn random_game(gamestate: &mut rules::GameState) {
         // get action from engine
         let random_environment_action = {
             let mut actions = gamestate.get_all_actions();
-            if actions.len() == 0 {
+            if actions.is_empty() {
                 None
             } else {
                 let idx = rng.gen_range(0..actions.len());

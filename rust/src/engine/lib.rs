@@ -2,10 +2,6 @@ use rand::rngs;
 use rand::Rng;
 use std::io;
 
-pub fn foo() {
-    println!("foo");
-}
-
 /// The state needed for a game. I.e. for 2048 the board
 pub trait GameState {
     type Error;
@@ -22,7 +18,7 @@ pub trait Engine {
 }
 
 pub trait ToConsole: GameState {
-    fn to_console() -> Result<String, std::fmt::Error>;
+    fn to_console() -> String;
 }
 
 pub struct RandomEngine {

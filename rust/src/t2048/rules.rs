@@ -192,13 +192,13 @@ impl Board {
 }
 
 impl GameState {
-    pub fn to_console(&self) -> Result<String, std::fmt::Error> {
+    pub fn to_console(&self) -> String {
         let mut s = String::new();
         let GameState { board, player } = self;
         // TODO: what to do if writeln! returns an error
         match player {
-            Player::Player => writeln!(&mut s, "player :: Player")?,
-            Player::Environment => writeln!(&mut s, "player :: Environment")?,
+            Player::Player => writeln!(&mut s, "player :: Player").unwrap(),
+            Player::Environment => writeln!(&mut s, "player :: Environment").unwrap(),
         };
         let printable: Vec<_> = board.0.iter().map(|val| format!("{}", val)).collect();
         let width = printable.iter().map(|s| s.len()).max().unwrap();
@@ -209,11 +209,11 @@ impl GameState {
                     " {:width$} ",
                     printable[SIDE * r + c],
                     width = width
-                )?;
+                ).unwrap();
             }
-            writeln!(&mut s)?;
+            writeln!(&mut s).unwrap();
         }
-        Ok(s)
+        s
     }
 
     pub fn init_game(rng: &mut rand::rngs::ThreadRng) -> GameState {

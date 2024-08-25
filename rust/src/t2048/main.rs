@@ -1,7 +1,5 @@
 mod rules;
 
-// use self::rules;
-extern crate engine;
 use clap::{Parser, ValueEnum};
 
 
@@ -26,7 +24,7 @@ struct Cli {
 fn human_play_1player_game(gamestate: &mut rules::GameState) {
     let mut rng = rand::thread_rng();
     // display
-    println!("{}", gamestate.to_console().unwrap());
+    println!("{}", gamestate.to_console());
     loop {
         // get action from human
         let action: rules::Action;
@@ -49,7 +47,7 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
         gamestate
             .take_action_mut(action)
             .expect("Player took an illegal action");
-        println!("{}", gamestate.to_console().unwrap());
+        println!("{}", gamestate.to_console());
 
         // get action from engine
         let random_environment_action = {
@@ -71,7 +69,7 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
                 gamestate
                     .take_action_mut(action)
                     .expect("Environment took an illegal action");
-                println!("{}", gamestate.to_console().unwrap());
+                println!("{}", gamestate.to_console());
             }
         }
     }
@@ -80,7 +78,7 @@ fn human_play_1player_game(gamestate: &mut rules::GameState) {
 fn random_game(gamestate: &mut rules::GameState) {
     let mut rng = rand::thread_rng();
     // display
-    println!("{}", gamestate.to_console().unwrap());
+    println!("{}", gamestate.to_console());
     loop {
         // get random action
         let action = {
@@ -94,7 +92,7 @@ fn random_game(gamestate: &mut rules::GameState) {
         gamestate
             .take_action_mut(action)
             .expect("Player took an illegal action");
-        println!("{}", gamestate.to_console().unwrap());
+        println!("{}", gamestate.to_console());
 
         // get action from engine
         let random_environment_action = {
@@ -116,7 +114,7 @@ fn random_game(gamestate: &mut rules::GameState) {
                 gamestate
                     .take_action_mut(action)
                     .expect("Environment took an illegal action");
-                println!("{}", gamestate.to_console().unwrap());
+                println!("{}", gamestate.to_console());
             }
         }
     }

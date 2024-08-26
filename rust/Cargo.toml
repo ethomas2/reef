@@ -8,6 +8,10 @@ edition = "2021"
 name = "2048"
 path = "src/t2048/main.rs"
 
+[[bin]]
+name = "connect4"
+path = "src/connect4/main.rs"
+
 [lib]
 name = "engine"
 path = "src/engine/lib.rs"

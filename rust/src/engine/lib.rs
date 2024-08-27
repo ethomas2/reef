@@ -4,17 +4,18 @@ use std::io;
 
 /// The state needed for a game. I.e. for 2048 the board
 pub trait GameState {
-    type Error;
+    type TakeActionError;
     type Action;
+    type AllActionsIter: Iterator<Item = Self::Action> + ExactSizeIterator;
 
-    fn get_all_actions(&self) -> Vec<Self::Action>;
+    fn get_all_actions(&self) -> Self::AllActionsIter;
 
-    fn take_action_mut(&mut self, action: Self::Action) -> Result<(), Self::Error>;
+    fn take_action_mut(&mut self, action: Self::Action) -> Result<(), Self::TakeActionError>;
 }
 
 /// A thing that takes in a game and returns the action to take for a given game state
-pub trait Engine {
-    fn get_action<G: GameState + ToConsole>(&mut self, game: G) -> G::Action;
+pub trait Engine<G: GameState> {
+    fn get_action(&mut self, game: G) -> Option<G::Action>;
 }
 
 pub trait ToConsole: GameState {
@@ -25,19 +26,26 @@ pub struct RandomEngine {
     rng: rngs::ThreadRng,
 }
 
-impl Engine for RandomEngine {
-    fn get_action<G: GameState>(&mut self, gamestate: G) -> G::Action {
+impl<G: GameState> Engine<G> for RandomEngine {
+    fn get_action(&mut self, gamestate: G) -> Option<G::Action> {
         let mut actions = gamestate.get_all_actions();
-        actions.remove(self.rng.gen_range(0..actions.len()))
+        let idx = self.rng.gen_range(0..actions.len());
+        let result = actions.nth(idx);
+       result
     }
 }
 
-pub struct HumanEngine {}
+pub struct HumanEngine<G: GameState> {
+    str_to_action: Box<dyn Fn(&str) -> Option<G::Action>>
 
-impl Engine for HumanEngine {
-    fn get_action<G: GameState + ToConsole>(&mut self, _gamestate: G) -> G::Action {
+}
+
+impl<G: GameState> Engine<G> for HumanEngine<G> {
+    fn get_action(&mut self, _gamestate: G) -> Option<G::Action>
+    {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
-        todo!()
+        let action = (self.str_to_action)(&input);
+        action
     }
 }

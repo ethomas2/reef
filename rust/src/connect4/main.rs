@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+use std::io;
 use std::error::Error;
 
 use clap::{Parser, ValueEnum};
@@ -45,12 +47,37 @@ impl GameState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Action(u8, u8);
 
-fn get_action(player_type: PlayerType, gamestate: &GameState) -> Option<Action> {
-    todo!();
+impl TryFrom<&str> for Action {
+    type Error = &'static str;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut parts = value.split(" ");
+        let row: u8 = parts.next().ok_or("Not enough parts")?.parse().map_err(|_| "not an int")?;
+        let col: u8 = parts.next().ok_or("Not enough parts")?.parse().map_err(|_| "not an int")?;
+        if let Some(_) = parts.next() {
+            return Err("too many parts");
+        }
+        Ok(Action(row, col))
+    }
+
 }
+
+fn get_human_action(_: &GameState) -> Option<Action> {
+    loop  {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        let maybe_action: Result<Action, _> =  input.as_str().try_into();
+        match  maybe_action {
+            Ok(action) => {return Some(action);},
+            Err(err) => {println!("Not valid {}", err)}
+        }
+    }
+}
+
+
 
 fn take_action_mut(gamestate: &mut GameState, action: Action) {
     todo!();
@@ -68,7 +95,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             Player::Player2 => cli.player2,
         };
 
-        let Some(action) = get_action(player_type, &gamestate) else {
+        let Some(action) = (match player_type {
+            PlayerType::Human => get_human_action(&gamestate),
+            PlayerType::Random => todo!(),
+        }) else {
             println!("Returned None for action. Breaking");
             break;
         };

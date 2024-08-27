@@ -353,30 +353,6 @@ impl GameState {
         }
     }
 
-    pub fn get_random_action(&self, rng: &mut ThreadRng) -> Option<Action> {
-        match self.player {
-            Player::Player => {
-                let mut actions = self.get_all_actions();
-                if actions.is_empty() {
-                    None
-                } else {
-                    Some(actions.remove(rng.gen_range(0..actions.len())))
-                }
-            }
-            Player::Environment => {
-                let available_placements: Vec<_> = iproduct!((0..SIDE), (0..SIDE))
-                    .filter(|&(r, c)| self.board.get((r, c)) == 0)
-                    .collect();
-                let random_placement = available_placements.choose(rng).copied();
-                random_placement.map(|placement| {
-                    Action::EnvironmentAction(EnvironmentAction {
-                        placement: placement.into(),
-                        val: *[2, 4].choose(rng).unwrap(),
-                    })
-                })
-            }
-        }
-    }
 }
 
 impl Display for Action {

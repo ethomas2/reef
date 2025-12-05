@@ -36,9 +36,10 @@ impl<G: GameState> Engine<G> for RandomEngine {
 }
 
 pub struct HumanEngine<G: GameState> {
-    str_to_action: Box<dyn Fn(&str) -> Option<G::Action>>
+    pub str_to_action: Box<dyn Fn(&str) -> Option<G::Action>>
 
 }
+
 
 impl<G: GameState> Engine<G> for HumanEngine<G> {
     fn get_action(&mut self, _gamestate: G) -> Option<G::Action>

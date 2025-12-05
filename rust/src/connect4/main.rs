@@ -1,3 +1,4 @@
+use engine;
 use std::convert::TryFrom;
 use std::io;
 use std::error::Error;
@@ -32,6 +33,21 @@ struct Board([[Space; 7]; 6]);
 struct GameState {
     board: Board,
     player: Player,
+}
+
+impl engine::GameState for GameState {
+
+    type TakeActionError = ();
+    type Action = ();
+    type AllActionsIter = std::iter::Empty<Self::Action>;
+
+    fn get_all_actions(&self) -> Self::AllActionsIter {
+        todo!()
+    }
+
+    fn take_action_mut(&mut self, action: Self::Action) -> Result<(), Self::TakeActionError> {
+       todo!()
+    }
 }
 
 impl GameState {
@@ -89,6 +105,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut gamestate = GameState::new();
 
 
+    let human_engine: engine::HumanEngine<GameState> = engine::HumanEngine {
+        str_to_action: todo!(),
+    };
     loop {
         let player_type = match gamestate.player {
             Player::Player1 => cli.player1,
